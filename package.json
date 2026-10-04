@@ -1,0 +1,6 @@
+{
+  "name": "el-cerco", "version": "0.8.0", "private": true,
+  "type": "module", "engines": { "node": ">=22" },
+  "scripts": { "start": "node server.mjs", "test": "node --test", "check": "node --check server.mjs && node --check src/world.mjs && node --check src/navigation.mjs && node --check src/storage.mjs && node --check src/communities.mjs && node --check src/story.mjs && node --check src/structures.mjs && node --check public/game.js" }
+}
+
