@@ -50,3 +50,22 @@ Cada 5 s: escribe `world.json.tmp`, sincroniza sus datos con fsync, luego renomb
 Una caída abrupta puede revertir hasta 5 s de progreso; no hay journal ni garantía transaccional ante corte eléctrico. El archivo corrupto o una versión desconocida abortan el arranque. `src/storage.mjs` migra v1 a v2 tras crear copia exacta `.v1.bak`: conserva IDs, fechas, inventarios y construcciones; convierte claves y deja rocas vacías en el mundo antiguo. Las rutas se calculan en memoria, no se guardan ni se sincronizan. La prueba de migración compara el backup y reconecta usando la clave previa.
 
 Las claves locales están en texto en el archivo de desarrollo. Producción requiere cuentas reales, tokens con caducidad, TLS, límites, validación exhaustiva del estado cargado, transacciones y auditoría. El servicio actual permanece en loopback.
+
+
+## Extensión 0.12
+
+Transporte protocolo 1; guardado v6; /api/protocol anuncia build y features. Nuevas intenciones secuenciadas: sprint {enabled}, dodge, pause, expedition, deliver, weapon {weapon}. El uso del laboratorio se envía como use {id}, con validación completa en el servidor.
+
+/api/join admite accountKey (una clave previa del mismo perfil) al entrar a otro mundo; key sigue reconectando la identidad de ese mundo. Repetir accountKey en un mundo ya inscrito recupera la misma plaza. Las claves nunca viajan en snapshots. El snapshot incluye adventure, recetas, inventario material y cosmetics solo del observador. Los recursos y construcciones se limitan a 85 m, cubriendo el radio máximo de construcción alcanzable desde la base.
+
+El almacenamiento v6 incorpora perfiles cosméticos separados y un registro por mundo para impedir recompensas duplicadas. No hay autenticación de terceros ni recuperación externa de claves en esta versión.
+
+
+## Extensión 0.13
+
+Build 0.13.0 anuncia boss-variants y population. staff {id} prioriza un puesto y unstaff {id} lo pausa; requiere propiedad y presencia en la base. supply_workers {id} dona una comida y agua al refugio propio cercano. Los snapshots incluyen un resumen de población de la comunidad del observador y cadáveres próximos con existencia limitada. Efectos, raciones y tiempos de cadáveres se congelan durante pausa individual; el plazo real del mundo no.
+
+
+## Extensiones 0.14
+
+Build 0.14.0 añade capacidades `workers`, `incidents`, `cosmetics`. `workers` contiene residentes visibles a 75 m (posición, estado, carga); las rutas no se serializan. `adventure.incident` comunica la señal activa y `adventure.passages` los accesos. `interact` usa el colector a 3 m; `travel` también permite la acción explícita, con validación autoritativa. `cosmetic` recibe `style` y la secuencia habitual, utiliza exclusivamente el perfil de la sesión y guarda inmediatamente. `cosmetics` devuelve catálogo, propiedad, saldo y aspecto activo. Ninguna compra modifica estadísticas de combate.

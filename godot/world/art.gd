@@ -53,7 +53,7 @@ static func landscape(parent: Node3D, world: Dictionary) -> void:
 			if absf(at.x-c.x)<5 or absf(at.z-105)<5 or at.distance_to(center)<19:
 				continue
 			if i%3==0:
-				tree(parent,at,rng)
+				stone(parent,at+Vector3(0,0.3,0),Vector3(1.4,0.6,1.3),Color("597334"))
 			else:
 				for cluster in range(4):
 					var offset := Vector3(rng.randf_range(-0.7,0.7),0.45,rng.randf_range(-0.7,0.7))
@@ -70,6 +70,25 @@ static func landscape(parent: Node3D, world: Dictionary) -> void:
 	grass_mat.vertex_color_use_as_albedo = true
 	instance.material_override = grass_mat
 	parent.add_child(instance)
+	# Road markings and scattered low debris keep travel routes readable.
+	for c in world.communities:
+		for i in range(-8,9):
+			var z := float(c.y)+i*5.0
+			if z<3 or z>size-3: continue
+			S.box(parent,Vector3(0.15,0.025,1.8),Vector3(c.x,0.025,z),Color("c3b882"))
+		for i in range(32):
+			var at := Vector3(c.x+rng.randf_range(-30,30),0.08,c.y+rng.randf_range(-30,30))
+			if at.distance_to(Vector3(c.x,0,c.y))<19: continue
+			var slab := S.box(parent,Vector3(rng.randf_range(0.4,1.5),0.1,rng.randf_range(0.3,0.7)),at,Color("74766a"))
+			slab.rotation.y=rng.randf()*TAU
+		var sign_at := Vector3(c.x+4.5,0,c.y+21)
+		S.cylinder(parent,0.1,3,sign_at+Vector3(0,1.5,0),Color("687b79"))
+		S.box(parent,Vector3(3,0.9,0.15),sign_at+Vector3(0,2.6,0),Color("284c47"))
+		var sign_root := Node3D.new()
+		parent.add_child(sign_root)
+		sign_root.position=sign_at
+		var label := S.label(sign_root,str(c.get("name","REFUGIO")),3.2)
+		label.font_size=24
 
 static func wall(parent: Node3D, dimensions: Vector3, at: Vector3) -> Node3D:
 	var root := Node3D.new()
@@ -87,6 +106,7 @@ static func wall(parent: Node3D, dimensions: Vector3, at: Vector3) -> Node3D:
 		S.box(root,Vector3(3.1,0.15,0.18),Vector3(0,side*0.76,-0.21),Color("4b4d45"))
 	var brace := S.box(root,Vector3(2.9,0.17,0.2),Vector3(0,0,-0.32),Color("58462f"))
 	brace.rotation.z=0.53
+	batch_static(root,true)
 	return root
 
 static func vault(parent: Node3D) -> void:
@@ -103,6 +123,10 @@ static func vault(parent: Node3D) -> void:
 		S.cylinder(parent,0.10,2.7,Vector3(cos(angle)*1.25,1.6,sin(angle)*1.25),Color("536c72"))
 
 static func obstacle(parent: Node3D, data: Dictionary) -> void:
+	if data.has("landmark"):
+		S.box(parent,Vector3(data.sx*2,2.2,data.sy*2),Vector3(data.x,1.1,data.y),Color("77877e"),true)
+		S.box(parent,Vector3(data.sx*2+0.1,0.18,data.sy*2+0.1),Vector3(data.x,2.25,data.y),Color("b7ac83"))
+		return
 	var center := Vector3(data.x,0,data.y)
 	var collision := S.box(parent,Vector3(data.sx*2,3.5,data.sy*2),center+Vector3(0,1.75,0),Color.WHITE,true)
 	collision.visible=false
@@ -113,7 +137,118 @@ static func obstacle(parent: Node3D, data: Dictionary) -> void:
 			var at := center+Vector3(across*data.sx,0.42+row*0.8,0)
 			var block := S.box(parent,Vector3(data.sx*0.39,0.76,data.sy*2),at,Color("8a8d77").darkened(float((i+row)%3)*0.06))
 			if row==3:
-				block.rotation.z=float(i%3-1)*0.09
+					block.rotation.z=float(i%3-1)*0.09
+	if str(data.id).ends_with("-ruin"):
+		# A roof, boarded windows and supplies fit inside the authoritative footprint.
+		S.box(parent,Vector3(data.sx*2,0.2,data.sy*2),center+Vector3(0,3.6,0),Color("53606a"))
+		for i in range(3):
+			var at := center+Vector3((i-1)*data.sx*0.6,2.2,data.sy+0.02)
+			S.box(parent,Vector3(1.2,0.95,0.08),at,Color("25353e"))
+			var plank := S.box(parent,Vector3(1.35,0.17,0.12),at,Color("9b7955"))
+			plank.rotation.z=0.3
+		var root := Node3D.new()
+		parent.add_child(root)
+		root.position=center
+		var label := S.label(root,"SUMINISTROS · V",4.5,Color("e7c887"))
+		label.font_size=26
+		S.cylinder(parent,0.65,1.2,center+Vector3(0,4.3,0),Color("6a7c7b"))
+
+static func batch_static(parent: Node3D, local_group := false) -> void:
+	var groups := {}
+	for child in parent.get_children():
+		if not child is MeshInstance3D or not child.visible or not child.material_override is StandardMaterial3D: continue
+		var mat: StandardMaterial3D = child.material_override
+		if mat.transparency!=BaseMaterial3D.TRANSPARENCY_DISABLED or mat.emission_enabled: continue
+		var original: Mesh = child.mesh
+		var scale := Vector3.ONE
+		var kind := ""
+		if original is BoxMesh:
+			kind="box"
+			scale=original.size
+		elif original is SphereMesh:
+			kind="sphere"
+			scale=Vector3(original.radius*2,original.height,original.radius*2)
+		elif original is CylinderMesh:
+			if original.top_radius!=original.bottom_radius: continue
+			kind="cylinder"
+			scale=Vector3(original.bottom_radius*2,original.height,original.bottom_radius*2)
+		else: continue
+		var key := kind if local_group else "%s/%d/%d" % [kind,floor(child.position.x/24),floor(child.position.z/24)]
+		if not groups.has(key): groups[key]={"kind":kind,"items":[]}
+		groups[key].items.append({"transform":Transform3D(child.transform.basis * Basis.from_scale(scale),child.position),"color":mat.albedo_color})
+		child.visible=false
+		if child.get_child_count()==0: child.queue_free()
+	for group in groups.values():
+		var mesh: Mesh
+		if group.kind=="box":
+			mesh=BoxMesh.new()
+			mesh.size=Vector3.ONE
+		elif group.kind=="sphere":
+			mesh=SphereMesh.new()
+			mesh.radius=0.5
+			mesh.height=1
+			mesh.radial_segments=7
+			mesh.rings=3
+		else:
+			mesh=CylinderMesh.new()
+			mesh.top_radius=0.5
+			mesh.bottom_radius=0.5
+			mesh.height=1
+			mesh.radial_segments=10
+		var multi := MultiMesh.new()
+		multi.transform_format=MultiMesh.TRANSFORM_3D
+		multi.use_colors=true
+		multi.mesh=mesh
+		multi.instance_count=group.items.size()
+		for i in range(group.items.size()):
+			multi.set_instance_transform(i,group.items[i].transform)
+			multi.set_instance_color(i,group.items[i].color)
+		var instance := MultiMeshInstance3D.new()
+		instance.multimesh=multi
+		var material := S.material(Color.WHITE)
+		material.vertex_color_use_as_albedo=true
+		instance.material_override=material
+		parent.add_child(instance)
+
+static func merge_rigid(parent: Node3D) -> void:
+	# One draw per animated body part, preserving each vertex's geometry and color.
+	var vertices := PackedVector3Array()
+	var normals := PackedVector3Array()
+	var colors := PackedColorArray()
+	var indices := PackedInt32Array()
+	for child in parent.get_children():
+		if not child is MeshInstance3D or not child.visible or not child.material_override is StandardMaterial3D: continue
+		var mat: StandardMaterial3D = child.material_override
+		if mat.transparency!=BaseMaterial3D.TRANSPARENCY_DISABLED or mat.emission_enabled: continue
+		if child.mesh.get_surface_count()!=1: continue
+		var source: Array = child.mesh.surface_get_arrays(0)
+		var points: PackedVector3Array = source[Mesh.ARRAY_VERTEX]
+		var source_normals: PackedVector3Array = source[Mesh.ARRAY_NORMAL]
+		var source_indices: PackedInt32Array = source[Mesh.ARRAY_INDEX]
+		var base := vertices.size()
+		var normal_basis: Basis = child.transform.basis.inverse().transposed()
+		for i in range(points.size()):
+			vertices.append(child.transform*points[i])
+			normals.append((normal_basis*source_normals[i]).normalized())
+			colors.append(mat.albedo_color)
+		for index in source_indices: indices.append(base+index)
+		child.visible=false
+		if child.get_child_count()==0: child.queue_free()
+	if vertices.is_empty(): return
+	var arrays := []
+	arrays.resize(Mesh.ARRAY_MAX)
+	arrays[Mesh.ARRAY_VERTEX]=vertices
+	arrays[Mesh.ARRAY_NORMAL]=normals
+	arrays[Mesh.ARRAY_COLOR]=colors
+	arrays[Mesh.ARRAY_INDEX]=indices
+	var mesh := ArrayMesh.new()
+	mesh.add_surface_from_arrays(Mesh.PRIMITIVE_TRIANGLES,arrays)
+	var instance := MeshInstance3D.new()
+	instance.mesh=mesh
+	var mat := S.material(Color.WHITE)
+	mat.vertex_color_use_as_albedo=true
+	instance.material_override=mat
+	parent.add_child(instance)
 
 static func crate(parent: Node3D, at: Vector3) -> void:
 	S.box(parent,Vector3(0.8,0.6,0.8),at+Vector3(0,0.3,0),Color("927448"))

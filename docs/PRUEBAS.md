@@ -79,3 +79,37 @@ Las pruebas del jefe validan creación, no todos los patrones de combate. No hay
 ## Límites de evidencia
 
 No se ha completado todo este recorrido manual, ni una defensa coordinada entre dos personas. No se midieron percentiles de rendimiento, 40 conexiones, pérdida de paquetes, móviles, dos PCs de una LAN ni un proceso muerto entre escritura y rename. No se probó audio con escucha humana. No confundir FPS instantáneos del HUD con benchmark.
+
+## Entrega 0.12 — verificación ejecutada
+
+- `npm test`: 74 pruebas aprobadas, 0 fallos.
+- `npm run check`: sin errores de sintaxis.
+- `node tools/verify-godot.mjs .tools/godot-4.5.1/Godot_v4.5.1-stable_win64_console.exe --capture`: NATIVE_SMOKE failures=0, guardado leído correctamente, captura real revisada. Prueba final con servidor v6 y perfiles cosméticos.
+- Segundo proyecto: la misma integración con `--project=el-cerco-3d-(4.5)` también pasó. Comparación byte a byte: los diez scripts actualizados coinciden; configuraciones del proyecto preservadas.
+- Render normal: 143,99 FPS de media, p95 7,031 ms; 387 llamadas de dibujo en la muestra final. Escena sintética ampliada: 73,10 FPS, p95 16,755 ms; no incluye IA de las entidades añadidas. Ver performance-012.json y performance-012-stress.json.
+- Carga HTTP/SSE 2/10/20/40: sin errores; ~30 ticks/s. Condiciones y límites en CARGA_012.md.
+- El servidor que el usuario mantiene en 3002 todavía anuncia saveVersion 5 y no anuncia build: necesita reinicio. Las pruebas usaron carpetas temporales y no migraron ni reemplazaron su partida activa.
+
+Los nuevos flujos verificados incluyen cobros y filas atómicos, inventarios tipados, producción con trabajadores, recargas/cambio de arma, pausa, recogida de muestra junto al sello, victoria condicionada, nueva oportunidad al eliminar la comunidad que mató al jefe, expiración real durante pausa, copia exacta de guardado v5 y conservación de cosméticos entre mundos sin duplicar premios o plazas. Las limitaciones de producto y el siguiente paso están en SUPERVIVENCIA_012.md.
+
+## Retoma de entrega 0.12 — 4 de octubre de 2026
+
+- npm test: 74 aprobadas, 0 fallos. El primer intento no pudo crear subprocesos (spawn EPERM); la repetición autorizada completó la suite.
+- npm run check: aprobado, ampliado a adventure, inventory, rewards, harvesting y loot.
+- Integración Godot 4.5.1 sin ventana: NATIVE_SMOKE failures=0 en godot/ y el-cerco-3d-(4.5)/. Ambos verificaron guardado y lectura con dos identidades, cinco estructuras y una mejora.
+- Corregidas las instrucciones que todavía presentaban la etapa 6 como pendiente, el guardado como v4 y las oleadas como intervalos de 95 segundos. Registro de entrega actualizado a 0.12.
+- Se utilizaron guardados temporales. Esta revisión no repite mediciones gráficas ni sustituye la campaña manual completa pendiente.
+
+
+## Continuación 0.13
+
+83/83 pruebas Node aprobadas. Nuevos flujos en test/horde-population.test.mjs: habilidades con preparación, interrupción por disparos, resurrección única sin duplicar botín, límites de enemigos y colisión, frenesí y caducidad, prioridades de trabajo, raciones atómicas, desconexión, agotamiento compartido, descarga única y selección por ruido.
+
+La integración Godot pasa en los dos proyectos. Comprueba rótulos de jefe, marcador de frenesí, pantalla de comunidad, bloqueo de movimiento con menú y eliminación de filas obsoletas. La captura real de 0.13 se revisó. Reporte de escena pequeña: performance-013.json. Carga ampliada 2/10/20/40 clientes: CARGA_013.md; cero errores, ~30 ticks/s con 40 clientes y 96 infectados. Las condiciones y límites se detallan allí y en HORDAS_COMUNIDAD_013.md.
+
+
+## 0.14 — Mundo vivo
+
+91 pruebas Node y comprobación sintáctica aprobadas. Integración nativa en ambos proyectos. Trabajadores: ruta, carga guardada, entrega y recogida tras destruir puesto; paredes bloquean extracción. Radio: distancia, visión, caducidad y premio único. Colectores: salida libre y costes atómicos. Cosméticos: propiedad, saldo, repetición y equipamiento por sesión autenticada.
+
+Estrés gráfico a 1280×720 con 96 infectados, 80 muros y 32 residentes: 119,20 FPS medios frente a 50,14 antes de fusionar mallas rígidas; p95 10,39 ms. Es render sintético, sin IA de las entidades añadidas. Simulación separada de 32 residentes: tick medio 2,11 ms, p95 6,36 ms. Ver MUNDO_VIVO_014.md y sus reportes.

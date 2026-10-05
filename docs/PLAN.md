@@ -9,11 +9,17 @@ Cada etapa debe conservar un arranque reproducible. No se declara cumplida una a
 | 3. Supervivencia | 2 | Recoger, fabricar, reparar, oleadas 1–3 con jefe; cerrar/reiniciar conserva estado; muerte con y sin núcleo | Implementada; pruebas automáticas aprobadas; balance y partida manual completa pendientes |
 | 4. Mundo | 3 verificada manualmente | Cuatro regiones y comunidades, inscripción 40 persistente, radio hasta ×2, directorio local, asedio configurable, eliminación y carga gradual 2/10/20/40 | Base funcional implementada y probada; territorios provisionales, túneles/POI y partida humana de asedio pendientes |
 | 5. Historia | 4 | Introducción jugable desarrollada, seis magos alcanzables con pistas y movilidad segura, seis poderes validados por servidor, misión de apertura | Base funcional 0.6 implementada, 30 pruebas aprobadas; desarrollo audiovisual y recorrido manual completo pendientes |
-| 6. Desenlace | 5 | Fases persistentes, Paciente 0, única comunidad + verdad + cura, cierre por fecha y premios idempotentes por cuenta | Pendiente; solo reloj y expiración anticipados |
+| 6. Desenlace | 5 | Fases persistentes, Paciente 0, única comunidad + verdad + cura, cierre por fecha y premios idempotentes por cuenta | Base funcional 0.12: jefe, cura, victoria condicionada, expiración y recompensa única; pruebas automáticas aprobadas. Balance del mes, tienda y campaña humana pendientes |
 
-## Próximo incremento
+## Estado actual: 0.14
 
-Incremento 0.8 completado: filas conectadas, selección y gestión de edificios, mejoras y ruinas renovables. Detalles y evidencia en MECANICAS_08.md. El desenlace y las pruebas humanas siguen pendientes.
+Implementados trabajadores físicos con transporte, señales temporales, patios abiertos, colectores y tienda de insignias. 91 pruebas aprobadas. La siguiente aceptación es una partida humana completa y una prueba prolongada combinando población, hordas y red. Ver MUNDO_VIVO_014.md para los límites de los interiores, arte, IA de peatones y campaña.
+
+## Historial de incrementos
+
+Incremento 0.13 añade jefes variables, gestión de población, raciones y prioridad de puestos, con pruebas aprobadas; ver HORDAS_COMUNIDAD_013.md.
+
+Incremento 0.12 implementado: supervivencia, expediciones, población, investigación y desenlace funcional. Detalles y límites en SUPERVIVENCIA_012.md. Siguiente aceptación: partida humana completa hasta la cura, incluyendo asedio, muerte del portador de muestra y reconexión. Arte final, trabajadores visibles, más contenido de campaña y tienda cosmética siguen pendientes.
 
 1. Dos clientes gráficos y construcción compartida verificados; completar defensa coordinada y registrar percepción del control.
 2. Obstáculos y búsqueda por cuadrícula implementados y probados; ampliar pruebas con laberintos de jugadores y congestión.

@@ -11,6 +11,6 @@ test('contrato nativo anuncia protocolo y formato de guardado sin exponer identi
     await new Promise(resolve=>app.server.listen(0,'127.0.0.1',resolve));
     const response=await fetch(`http://127.0.0.1:${app.server.address().port}/api/protocol`);
     assert.equal(response.status,200);
-    assert.deepEqual(await response.json(),{protocol:1,saveVersion:5,transport:'http-sse',tickHz:30,snapshotHz:10,coordinates:'x,y -> Godot x,0,z'});
+    assert.deepEqual(await response.json(),{protocol:1,saveVersion:6,build:'0.14.0',features:['harvesting','vault-rebuild','adventure','typed-materials','patient-zero','boss-variants','population','workers','incidents','cosmetics'],transport:'http-sse',tickHz:30,snapshotHz:10,coordinates:'x,y -> Godot x,0,z'});
   }finally{await app.close();rmSync(directory,{recursive:true,force:true});}
 });

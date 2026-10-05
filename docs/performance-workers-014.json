@@ -1,0 +1,8 @@
+{
+  "scenario": "60 simulated seconds, 32 residents, 48 buildings, four online agents; no zombies, network or render",
+  "workers": 32,
+  "delivered": 288,
+  "meanTickMs": 2.1118072222222275,
+  "p95TickMs": 6.360599999999977,
+  "maxTickMs": 23.317100000000003
+}

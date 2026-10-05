@@ -92,7 +92,7 @@ test('v4 migra con respaldo exacto; normaliza recarga y conserva estructuras v5 
  try{const {w,p}=fixture();w.version=4;p.reload=-0.01;delete p.hunger;delete p.thirst;
   const raw=JSON.stringify({version:4,worlds:[w],accounts:{key:{id:'a',worldId:w.id}}});writeFileSync(directory+'/world.json',raw);
   const store=openStore(directory,1000),m=store.data.worlds[0],q=m.players.a;
-  assert.equal(store.data.version,5);assert.equal(q.reload,0);assert.equal(q.thirst,100);assert.equal(readFileSync(directory+'/world.json.v4.bak','utf8'),raw);
+  assert.equal(store.data.version,6);assert.equal(q.reload,0);assert.equal(q.thirst,100);assert.equal(readFileSync(directory+'/world.json.v4.bak','utf8'),raw);
   act(m,q,'build',{kind:'storage',x:43,y:58});m.walls[0].stock=73;store.save();
   const restored=openStore(directory,2000).data;assert.equal(restored.worlds[0].walls[0].stock,73);assert.equal(restored.accounts.key.id,'a');
  }finally{rmSync(directory,{recursive:true,force:true});}

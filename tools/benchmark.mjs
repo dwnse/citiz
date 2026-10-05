@@ -23,7 +23,7 @@ for(const count of [2,10,20,40]){
     }
     spawnWave(app.world,3,new Set(clients.map(c=>c.id)));
     const zombies=app.world.zombies.length,start=performance.now(),tickStart=app.world.tick,latencies=[],ticks=[],trafficStart=bytes;
-    for(let sample=0;sample<50;sample++){
+    for(let sample=0;sample<150;sample++){
       const batch=performance.now();
       await Promise.all(clients.map(async(c,i)=>{
         const sent=performance.now();
@@ -41,6 +41,7 @@ for(const count of [2,10,20,40]){
 }
 mkdirSync('docs',{recursive:true});
 writeFileSync('docs/CARGA.json',JSON.stringify({date:new Date().toISOString(),node:process.version,platform:process.platform,reports},null,2));
-writeFileSync('docs/CARGA.md',`# Prueba local de carga 0.5\n\nEjecutada ${new Date().toISOString()} con ${process.version} en ${process.platform}. Reproducir: \`node tools/benchmark.mjs\`.\n\n| Clientes | Zombis iniciales | Duración s | Ticks/s | Tick p95 muestreado ms | Entrada p95 ms | KiB/s recibidos total | Errores HTTP/red |\n|---|---|---|---|---|---|---|---|\n${reports.map(r=>`| ${r.clients} | ${r.zombies} | ${r.seconds} | ${r.ticksPerSecond} | ${r.sampledTickP95ms} | ${r.inputP95ms} | ${r.receivedKiBPerSecond} | ${r.errors} |`).join('\n')}\n\nCada cliente usa HTTP/SSE real, manda movimiento a aproximadamente 10 Hz y dispara cada tercer envío. Se leen los streams continuamente; hay una oleada de nivel 3 en las comunidades ocupadas. Cincuenta muestras del último tick, no una traza de todos los ticks. Latencia medida de extremo a extremo de la petición de entrada en loopback. El tráfico es la suma de bytes de cuerpos SSE recibidos, sin cabeceras TCP/HTTP. El servidor guarda cada 5 segundos. Las pruebas usan carpetas temporales independientes.\n\nNo incluye renderizado de 40 navegadores, red externa, pérdida de paquetes, builds máximas ni una sesión prolongada. No demuestra capacidad de producción; permite detectar regresiones y estimar límites locales.\n`);
+writeFileSync('docs/CARGA_013.md',`# Prueba local de carga 0.13\n\nEjecutada ${new Date().toISOString()} con ${process.version} en ${process.platform}. Reproducir: \`node tools/benchmark.mjs\`.\n\n| Clientes | Zombis iniciales | Duración s | Ticks/s | Tick p95 muestreado ms | Entrada p95 ms | KiB/s recibidos total | Errores HTTP/red |\n|---|---|---|---|---|---|---|---|\n${reports.map(r=>`| ${r.clients} | ${r.zombies} | ${r.seconds} | ${r.ticksPerSecond} | ${r.sampledTickP95ms} | ${r.inputP95ms} | ${r.receivedKiBPerSecond} | ${r.errors} |`).join('\n')}\n\nCada cliente usa HTTP/SSE real, manda movimiento a aproximadamente 10 Hz y dispara cada tercer envío. Se leen los streams continuamente; hay una oleada de nivel 3 en las comunidades ocupadas. Ciento cincuenta muestras del último tick, no una traza de todos los ticks. Latencia medida de extremo a extremo de la petición de entrada en loopback. El tráfico es la suma de bytes de cuerpos SSE recibidos, sin cabeceras TCP/HTTP. El servidor guarda cada 5 segundos. Las pruebas usan carpetas temporales independientes.\n\nNo incluye renderizado de 40 navegadores, red externa, pérdida de paquetes, builds máximas ni una sesión prolongada. No demuestra capacidad de producción; permite detectar regresiones y estimar límites locales.\n`);
 if(reports.some(r=>r.errors))process.exitCode=1;
+
 

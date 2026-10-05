@@ -1,3 +1,4 @@
+import {randomUUID} from 'node:crypto';
 import {core} from './communities.mjs';
 import {solid} from './navigation.mjs';
 
@@ -53,7 +54,13 @@ export function interactStory(w,p,now){
   if(distance(p,w.story.seal)<=5&&clearSight(w,p,w.story.seal)){
     const progress=w.story.communities[p.communityId];
     if(progress.fragments.length<6){announce(p,`El encierro requiere seis claves. Tu comunidad conserva ${progress.fragments.length}/6.`,now);return true;}
-    progress.opened=true;announce(p,'Las seis claves abren el encierro para tu comunidad. Acceso preparado. El enfrentamiento con el Paciente 0 llegará en la siguiente etapa.',now);return true;
+    progress.opened=true;
+    if(!w.story.patient){
+      const id=randomUUID(),seal=w.story.seal;
+      w.story.patient={id,defeated:false};
+      w.zombies.push({id,x:seal.x,y:seal.y,hp:1800,maxHp:1800,level:3,communityId:p.communityId,attack:0,boss:true,finalBoss:true,ability:5,warning:0});
+    }
+    announce(p,w.story.patient.defeated?'Recupera la muestra del origen y llévala a un Laboratorio del Sello con 3 informes para sintetizar la cura.':'El Paciente 0 ha despertado. Evita el círculo de descarga. Bajo media vida entra en furia. Recupera la muestra y sintetiza la cura en tu laboratorio.',now);return true;
   }
   return false;
 }
@@ -77,6 +84,11 @@ export function cast(w,p,power,now){
 
 export function storyTick(w,dt,now,online){
   if(!w.story)return;
+  if(w.story.patient?.defeated&&w.communities.find(c=>c.id===w.story.patient.defeatedBy)?.eliminated){
+    delete w.story.patient;
+    w.drops=w.drops.filter(d=>!d.sample);
+    for(const p of Object.values(w.players)){p.sample=false;if(p.intro)announce(p,'La comunidad que extrajo la muestra cayó. El origen se ha regenerado: reúne las claves y vuelve al sello para enfrentarlo.',now);}
+  }
   w.effects=w.effects.filter(f=>(f.life-=dt)>0);
   for(const m of w.story.mages){
     if(now>=m.moveAt){m.visit++;m.destination=m.home.y+(m.visit%2?6:0);m.moveAt=now+180000;}

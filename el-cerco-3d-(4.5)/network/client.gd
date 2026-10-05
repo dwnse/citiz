@@ -3,6 +3,7 @@ extends Node
 signal snapshot_received(state: Dictionary)
 signal status_changed(message: String)
 signal directory_received(worlds: Array)
+signal action_feedback(message: String, success: bool)
 
 var host := "127.0.0.1"
 var port := 3002
@@ -63,6 +64,10 @@ func refresh_worlds() -> void:
 	if protocol.get("protocol", 0) != 1:
 		status_changed.emit("Servidor no compatible o apagado. Inicia node tools/start-godot.mjs.")
 		return
+	if not "workers" in protocol.get("features",[]):
+		directory_received.emit([])
+		status_changed.emit("Servidor antiguo: cierra su consola con Ctrl+C, ejecuta node tools/start-godot.mjs y pulsa Actualizar partidas.")
+		return
 	var result: Dictionary = await request_json("/api/worlds")
 	if result.has("error"):
 		status_changed.emit(str(result.error))
@@ -81,6 +86,8 @@ func enter(selected_world: String, community: String, agent_name: String) -> voi
 	var body := {"worldId": selected_world, "communityId": community, "name": agent_name}
 	if identities.has(selected_world):
 		body["key"] = identities[selected_world]
+	elif not identities.is_empty():
+		body["accountKey"]=identities.values()[0]
 	status_changed.emit("Conectando…")
 	var result: Dictionary = await request_json("/api/join", body, true)
 	if ticket != generation:
@@ -161,10 +168,10 @@ func consume_frames() -> void:
 		buffer = buffer.slice(end + 2)
 		if frame.begins_with("data: "):
 			var parsed = JSON.parse_string(frame.substr(6))
-			if parsed is Dictionary and int(parsed.get("version", 0)) in [4, 5]:
+			if parsed is Dictionary and int(parsed.get("version", 0)) in [4, 5, 6]:
 				latest = parsed
 				if not connected:
-					status_changed.emit("En línea · autoridad Node · perfil " + profile)
+					status_changed.emit("Conectado · Partida guardada automáticamente")
 				connected = true
 				last_frame_ms = Time.get_ticks_msec()
 				snapshot_received.emit(latest)
@@ -204,5 +211,7 @@ func flush_actions() -> void:
 		if result.has("error"):
 			status_changed.emit(str(result.error))
 		elif not result.get("ok", false):
-			status_changed.emit("Acción rechazada: revisa alcance, recursos o recarga.")
+			action_feedback.emit(str(result.get("message","Acción no disponible. Acércate y comprueba los materiales.")),false)
+		elif not str(result.get("message","")).is_empty():
+			action_feedback.emit(str(result.message),true)
 	flush_actions()

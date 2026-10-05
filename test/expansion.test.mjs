@@ -77,7 +77,7 @@ test('migración v1 conserva clave, fecha, inventario y construcciones con backu
     const r=await post(base,'/api/join',{key:'legacy-key'});assert.equal(r.data.id,p.id);assert.equal(r.data.seq,91);
     assert.equal(app.world.players[p.id].wood,67);assert.equal(app.world.startedAt,world.startedAt);assert.equal(app.world.walls[0].id,'legacy-wall');assert.deepEqual(app.world.obstacles,[]);
     assert.equal(readFileSync(f.directory+'/world.json.v1.bak','utf8'),raw);
-    const written=JSON.parse(readFileSync(f.directory+'/world.json','utf8'));assert.equal(written.version,5);assert.equal(written.worlds.length,1);assert.equal(existsSync(f.directory+'/world.json.tmp'),false);
+    const written=JSON.parse(readFileSync(f.directory+'/world.json','utf8'));assert.equal(written.version,6);assert.equal(written.worlds.length,1);assert.equal(existsSync(f.directory+'/world.json.tmp'),false);
   }finally{if(app)await app.close();f.cleanup();}
 });
 

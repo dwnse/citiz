@@ -1,0 +1,8 @@
+{
+  "average_fps": 50.1382096704022,
+  "draw_calls": 3600,
+  "p95_frame_ms": 22.586,
+  "resolution": "1280x720",
+  "scenario": "Static render stress: 96 infected, 80 walls, 32 residents; no simulated AI for added entities",
+  "source": "Native verification log before rigid mesh merge"
+}

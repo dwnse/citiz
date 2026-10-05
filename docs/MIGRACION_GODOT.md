@@ -103,3 +103,12 @@ Continuación de interfaz: añadidos ui/minimap.gd y combat/audio.gd; modificado
 - Nuevos fuera del cliente: tools/start-godot.mjs, tools/verify-godot.mjs, test/protocol.test.mjs, docs/MIGRACION_GODOT.md, docs/godot-preview.png.
 - Continuación: godot/ui/minimap.gd y godot/combat/audio.gd; sus referencias están integradas en HUD y escena principal.
 - Motor portátil y su caché en .tools/; caché de importación godot/.godot/ y data-godot/ excluidos de Git. No se borró el cliente web ni sus guardados.
+
+
+## Actualización 0.12 / guardado v6
+
+Inventario tipado, expediciones, armas, investigación, población, combate final y cosméticos son autoritativos en Node. Godot tiene catálogo por categorías, recetas predictivas, objetivos, marcadores, armas del diario y ajustes. Se mantienen ambos proyectos nativos y la interfaz web histórica; los sistemas nuevos se presentan en Godot.
+
+Se transforma v5 a v6 con copia exacta world.json.v5.bak; el material anterior se convierte en recuperado sin perder valor. Las cuentas se asocian a perfiles con saldo y registro de premios por mundo. Una identidad nueva en otro mundo puede acreditar el perfil previo; no traslada recursos ni habilidades. Las identidades antiguas de mundos distintos no se fusionan automáticamente.
+
+Pruebas de migración, cuenta entre mundos, replay, recompensa única y reinicio: test/rewards.test.mjs. Descripción completa: SUPERVIVENCIA_012.md. Las configuraciones project.godot originales se conservan.

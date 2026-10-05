@@ -9,12 +9,13 @@ if(!engine)throw Error('Uso: node tools/verify-godot.mjs RUTA_GODOT [--capture]'
 const directory=mkdtempSync(join(tmpdir(),'cerco-native-'));
 const app=createServer({directory});
 const w=app.world;
+w.resources=[{id:'native-tree',kind:'tree',x:43,y:63,hits:5,maxHits:5,readyAt:0},{id:'native-rock',kind:'rock',x:39,y:63,hits:5,maxHits:5,readyAt:0}];
 w.zombies=[[65,64],[67,69],[64,72]].map(([x,y],i)=>({id:'native-z'+i,x,y,hp:68,maxHp:68,level:1,attack:0,boss:false,communityId:'forest'}));
 const capture=process.argv.includes('--capture');
 const project=process.argv.find(arg=>arg.startsWith('--project='))?.slice(10)||'godot';
 try{
   await new Promise(resolve=>app.server.listen(0,'127.0.0.1',resolve));
-  const args=[...(capture?[]:['--headless']),'--path',fileURLToPath(new URL('../'+project+'/',import.meta.url)),'--script','res://tests/native_smoke.gd','--',`--port=${app.server.address().port}`,`--profile=smoke_${Date.now()}`,...(capture?['--capture']:[])];
+  const args=[...(capture?[]:['--headless']),'--path',fileURLToPath(new URL('../'+project+'/',import.meta.url)),'--script','res://tests/native_smoke.gd','--',`--port=${app.server.address().port}`,`--profile=smoke_${Date.now()}`,...(capture?['--capture']:[]),...(process.argv.includes('--stress')?['--stress']:[])];
   const child=spawn(engine,args,{stdio:['ignore','pipe','pipe'],windowsHide:true});
   let output='';
   for(const stream of [child.stdout,child.stderr])stream.on('data',chunk=>{output+=chunk;process.stdout.write(chunk);});

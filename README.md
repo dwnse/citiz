@@ -1,5 +1,45 @@
 # El Cerco
 
+## Actualización 0.14
+
+Trabajadores visibles con rutas y transporte, patios de expedición, señales de radio, colectores entre zonas y aspectos de cuenta. 91 pruebas aprobadas. Rendimiento gráfico mejorado mediante mallas compartidas por parte animada. Detalles, controles y límites: [MUNDO_VIVO_014.md](docs/MUNDO_VIVO_014.md). Reinicia el servidor con `node tools/start-godot.mjs` y vuelve a abrir Godot.
+
+## 0.13 — Hordas con habilidades y gestión de comunidad
+
+Cuatro jefes con preparación visible y habilidades interrumpibles; resurrección sin botín duplicado. **O / Comunidad** abre población, raciones y prioridad de puestos. Los trabajadores consumen suministros y los edificios explican por qué se detienen. Corregida la extracción simultánea del último golpe de un recurso y la selección de objetivos por ruido.
+
+**83 pruebas aprobadas** y verificación Godot en ambas carpetas. [Mecánicas, controles, evidencia y pendientes](docs/HORDAS_COMUNIDAD_013.md). Reinicia Node con `node tools/start-godot.mjs` y vuelve a abrir Godot para cargarlo.
+
+## 0.12 — Supervivencia, expediciones y final jugable
+
+Sprint y esquiva, tres armas, materiales diferenciados, 18 estructuras por categorías, rescate de trabajadores, producción, investigación, día/noche, pausa individual y ajustes. Las seis claves abren el enfrentamiento con el Paciente 0; la cura exige una comunidad superviviente y registra recompensas cosméticas por cuenta sin duplicarlas.
+
+**Reinicia el servidor anterior con Ctrl+C y ejecuta `node tools/start-godot.mjs`; después reinicia Godot.** Los guardados migran a v6 con respaldo v5. No hace falta borrar la partida; si ya terminó, crea otra.
+
+[Controles, mecánicas, pruebas y pendientes de 0.12](docs/SUPERVIVENCIA_012.md). 74 pruebas Node aprobadas e integración Godot. La calidad artística final y una campaña larga con jugadores humanos siguen pendientes.
+
+Las secciones 0.11–0.5 siguientes son un registro histórico. Para las reglas, controles y pendientes vigentes consulta la guía de 0.12 enlazada arriba.
+
+## 0.11 — Reconstruir la bóveda y recursos próximos
+
+Con un superviviente vivo, acércate a las ruinas de tu bóveda y pulsa **K**, o el botón **Reconstruir bóveda**: cuesta 100 materiales, recupera 750 PV y restablece construcción y reapariciones. Mantiene las mejoras del núcleo. Si toda la comunidad ya fue eliminada, la partida sigue terminada.
+
+Al cargar partidas se generan también árboles y rocas recolectables cerca de las bases, con rótulos visibles incluso llevando la pistola. **Q** equipa el hacha-pico y clic mantenido extrae materiales. El cliente avisa si el servidor antiguo no envía recursos. **Cierra el servidor con Ctrl+C, ejecuta `node tools/start-godot.mjs` y vuelve a abrir el juego**. Actualizar archivos sin reiniciar Node no cambia el servidor que ya está ejecutándose.
+
+Verificación: 60 pruebas Node e integración nativa; reconstrucción con permisos y coste, retorno de reaparición, guardado, carga de recursos y presencia visible de modelos de árbol y roca.
+
+## 0.10 — Territorio guiado, regiones y defensas
+
+**B** muestra la parcela con borde azul y centro reservado rojo. **Mostrar un lugar disponible** sitúa el plano en un lugar válido. Catálogo desplazable de **14 estructuras**, con torreta, generador, reciclador, cocina, recolector de agua y sacos defensivos. Los zombis dejan suministros para la mochila: **E** recoge; **H/Y/N** consumen comida, agua o botiquín. Más árboles, rocas y ruinas distribuidos por región. [Reglas y comprobaciones](docs/EXPANSION_010.md).
+
+**Q: pistola / hacha-pico.** Tala árboles y pica rocas con clic mantenido para conseguir materiales de construcción. [Controles, cantidades y regeneración](docs/RECOLECCION.md).
+
+Las ocho construcciones tienen funciones jugables y acciones explícitas en su ficha: [funciones de edificios](docs/FUNCIONES_EDIFICIOS.md). Incluye blindaje en taller, cierre automático de portones, riego de huertos y almacenes compartidos de materiales y munición.
+
+## 0.9: interfaz, mapa y rendimiento
+
+Interfaz con tarjetas, barras de necesidades, acceso visible a construcción y avisos de acciones. El modo construcción centra la cámara en la base y explica los rechazos. Rueda del ratón para acercar/alejar. Oleadas cada 35 segundos. Carreteras deterioradas, señales de comunidades, escombros y ruinas de suministros identificadas. Geometría estática agrupada y objetos persistentes reutilizados. [Cambios y medición de rendimiento](docs/MEJORAS_09.md).
+
 ## 0.8: filas, gestión y suministros renovables
 
 En Godot: **Mayús + arrastrar** coloca filas conectadas de defensas; **clic derecho** selecciona edificios para usar, reparar, mejorar o desmontar. Tres niveles por edificio. **V** registra ruinas cercanas: 25 materiales y 6 balas, con espera compartida de dos minutos. Conserva guardados v5. [Reglas y verificación](docs/MECANICAS_08.md).
@@ -64,7 +104,7 @@ Alternativa verificada para dos clientes en el mismo navegador: uno en `http://1
 
 No necesitas `npm install`. Para detener, Ctrl+C en la terminal. El servidor guarda al cerrar y cada cinco segundos; vuelve a iniciarlo y entra desde el mismo perfil para recuperar al agente.
 
-## Controles
+## Controles del cliente web anterior
 
 | Acción | Control |
 |---|---|
@@ -83,7 +123,7 @@ No necesitas `npm install`. Para detener, Ctrl+C en la terminal. El servidor gua
 
 Muros: coste 20, alcance de colocación 9, territorio inicial de radio 18. U a menos de 6 unidades de la bóveda mejora el radio a 24, 30 y 36 por 60, 90 y 120 materiales. No se construye en el corredor central, sobre rocas ni a menos de 4 unidades de la bóveda. El plano verde anticipa las reglas; el servidor vuelve a verificarlas. Las rocas bloquean movimiento y disparos; los zombis buscan rutas para rodearlas.
 
-La primera oleada llega a los 45 segundos de la primera inscripción. Las siguientes llegan cada 95 segundos mientras haya conexión; el nivel aumenta cada dos oleadas y vuelve a ciclar. El jefe de nivel 3 anuncia un ataque de radio 6: sal del círculo rojo. Los infectados muertos dejan materiales y munición. La bóveda permite reaparecer; al morir se pierde el 20 % de materiales. Sin bóveda no hay reaparición.
+El mundo comienza con una espera de 45 segundos para la primera oleada; el lanzador de entrenamiento puede ajustarla a 35. Las siguientes llegan cada 35 segundos de día o 28 de noche mientras haya conexión; el nivel aumenta cada dos oleadas y vuelve a ciclar. El jefe de nivel 3 anuncia un ataque de radio 6: sal del círculo rojo. Los infectados muertos dejan suministros y munición. La bóveda permite reaparecer; sin ella no hay reaparición hasta reconstruirla con un superviviente vivo.
 
 ## Verificar
 
@@ -96,7 +136,7 @@ La suite usa almacenamiento temporal, dos clientes HTTP/SSE independientes y un 
 
 ## Mundos locales independientes y configuración
 
-La sala permite hasta ocho mundos independientes por proceso. Nuevos: cuatro comunidades y cupo total 40. Legado: una comunidad y cupo 10. Las claves del navegador se conservan por mundo. Los archivos antiguos migran a v4 dejando una copia exacta `world.json.v1.bak` o `world.json.v2.bak` o `world.json.v3.bak`, según su formato de origen.
+La sala permite hasta ocho mundos independientes por proceso. Nuevos: cuatro comunidades y cupo total 40. Legado: una comunidad y cupo 10. Las claves del navegador se conservan por mundo. Los archivos antiguos migran a v6 dejando una copia exacta `world.json.vN.bak`, donde N es la versión de origen (1–5).
 
 Para un directorio independiente en otro proceso, desde otra terminal:
 
@@ -110,8 +150,8 @@ Nunca ejecutes dos procesos con el mismo `DATA_DIR`. `MODE=development` habilita
 
 ## Estado real
 
-Implementadas las mecánicas de etapas 1–3 y la base funcional de etapa 4: sala, navegación, radio ampliable, cuatro territorios/comunidades, cupos, asedios y eliminación. Los territorios aún usan geometría temporal: Subterráneo es una zona oscura del mismo plano, no una red de túneles; faltan puntos de interés elaborados, rutas alternativas diseñadas y balance humano de guerra. La etapa 5 tiene base funcional en 0.6; etapa 6 pendiente. El plazo y la expiración no completan fases, historia, victoria y recompensas.
+La versión 0.12 incluye un recorrido funcional desde la supervivencia hasta Paciente 0 y la cura, con victoria condicionada y recompensas persistentes. La aceptación manual de una campaña completa sigue pendiente. Los territorios usan geometría temporal: Subterráneo es una zona oscura del mismo plano; faltan túneles, interiores, rutas alternativas y balance humano de guerra.
 
-Solo se escucha en `127.0.0.1`. No es un servicio listo para Internet ni un ejecutable nativo. La navegación usa cuadrícula, dos búsquedas máximas por mundo y tick y caché de 1,5 s; puede atacar muros si no encuentra ruta. Árboles decorativos sin colisión. Se midieron 40 clientes de transporte en loopback, no 40 navegadores renderizando ni una partida prolongada. El guardado puede perder hasta cinco segundos tras una caída abrupta y no tiene diario transaccional. No hay cuentas de producción, cosméticos ni premios.
+Solo se escucha en `127.0.0.1`. El cliente Godot se ejecuta desde el proyecto; todavía no se distribuye un ejecutable exportado ni un servicio público. La navegación usa cuadrícula y puede atacar muros si no encuentra ruta. Se midieron 40 clientes de transporte en loopback; falta una partida prolongada con 40 clientes gráficos en red externa. El guardado puede perder hasta cinco segundos tras una caída abrupta y no tiene diario transaccional. Hay perfiles locales y premios cosméticos persistentes, pero faltan autenticación externa y tienda.
 
 Consulta [decisiones](docs/DECISIONES.md), [plan](docs/PLAN.md), [protocolo](docs/RED.md) y [registro de entrega](docs/ENTREGA.md).

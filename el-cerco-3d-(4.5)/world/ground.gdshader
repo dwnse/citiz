@@ -17,6 +17,10 @@ void fragment(){
  vec3 dirt=mix(vec3(0.35,0.24,0.13),vec3(0.60,0.45,0.26),n);
  if(p.x>105.0){ grass=mix(grass,vec3(0.29,0.29,0.24),0.7); }
  if(p.y>105.0){ grass=mix(grass,vec3(0.24,0.28,0.25),0.6); }
- ALBEDO=mix(grass,dirt,max(trail,smoothstep(0.60,0.80,n)*0.65));
+ vec3 asphalt=mix(vec3(0.19,0.22,0.22),vec3(0.30,0.31,0.28),n);
+ float cracks=1.0-smoothstep(0.01,0.05,abs(noise(p*1.7)-0.48));
+ asphalt*=1.0-cracks*0.25;
+ vec3 terrain=mix(grass,dirt,smoothstep(0.60,0.80,n)*0.65);
+ ALBEDO=mix(terrain,asphalt,trail);
  ROUGHNESS=0.95;
 }

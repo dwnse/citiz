@@ -2,10 +2,11 @@ import {isSolid,contains} from './structures.mjs';
 // Routes are transient: never serialized into saves or sent to clients.
 import {vaults} from './communities.mjs';
 const runtime = new WeakMap();
-export function solid(world, x, y, radius = .6, walls = true) {
+export function solid(world, x, y, radius = .6, walls = true, resources = world.resources || []) {
   return x < 2 || y < 2 || x > (world.size||100)-2 || y > (world.size||100)-2 ||
     vaults(world).some(v=>Math.hypot(x-v.x, y-v.y) < 2.2+radius) ||
     (world.obstacles || []).some(b => Math.abs(b.x-x) < b.sx+radius && Math.abs(b.y-y) < b.sy+radius) ||
+    resources.some(r=>r.hits>0&&Math.hypot(r.x-x,r.y-y)<(r.kind==='tree'?.4:.8)+radius) ||
     (walls && world.walls.some(b => isSolid(b) && contains(b,x,y,radius)));
 }
 
@@ -15,11 +16,20 @@ function clearSegment(world, a, b) {
   return true;
 }
 
-export function findPath(world, start, target, reach = 2.3, limit = 2400) {
+export function findPath(world, start, target, reach = 2.3, limit = 2400, canReach = null) {
+  // Static resource buckets and memoized grid cells bound repeated A* collision work.
+  const buckets=new Map(),cells=new Map();
+  for(const r of world.resources||[]){if(r.hits<=0)continue;const key=Math.floor(r.x/4)+','+Math.floor(r.y/4);if(!buckets.has(key))buckets.set(key,[]);buckets.get(key).push(r);}
+  const blocked=(x,y)=>{
+    const key=x+','+y;if(cells.has(key))return cells.get(key);
+    const near=[],cx=Math.floor(x/4),cy=Math.floor(y/4);
+    for(let dx=-1;dx<=1;dx++)for(let dy=-1;dy<=1;dy++)near.push(...(buckets.get((cx+dx)+','+(cy+dy))||[]));
+    const result=solid(world,x,y,.6,true,near);cells.set(key,result);return result;
+  };
   const candidates=[];
   for(let dx=-1;dx<=1;dx++)for(let dy=-1;dy<=1;dy++)candidates.push({x:Math.round(start.x)+dx,y:Math.round(start.y)+dy});
   candidates.sort((a,b)=>Math.hypot(a.x-start.x,a.y-start.y)-Math.hypot(b.x-start.x,b.y-start.y));
-  const origin=candidates.find(p=>!solid(world,p.x,p.y)&&clearSegment(world,start,p));
+  const origin=candidates.find(p=>!blocked(p.x,p.y)&&clearSegment(world,start,p));
   if(!origin)return [];
   const key = p => p.x+','+p.y;
   const heuristic = p => Math.max(0, Math.hypot(p.x-target.x,p.y-target.y)-reach);
@@ -29,14 +39,14 @@ export function findPath(world, start, target, reach = 2.3, limit = 2400) {
     let min=0;for(let i=1;i<open.length;i++)if(open[i].f<open[min].f)min=i;
     const current=open.splice(min,1)[0];
     if(current.g!==best.get(key(current)))continue;
-    if(heuristic(current)===0) {
+    if(heuristic(current)===0&&(!canReach||canReach(current))) {
       const path=[{x:current.x,y:current.y}];let k=key(current);
       while(parents.has(k)){const prev=parents.get(k);path.push(prev);k=key(prev);}
       return path.reverse();
     }
     for(const [dx,dy] of [[1,0],[-1,0],[0,1],[0,-1]]) {
       const next={x:current.x+dx,y:current.y+dy},g=current.g+1,k=key(next);
-      if(solid(world,next.x,next.y) || g >= (best.get(k)??Infinity))continue;
+      if(blocked(next.x,next.y) || g >= (best.get(k)??Infinity))continue;
       best.set(k,g);parents.set(k,{x:current.x,y:current.y});open.push({...next,g,f:g+heuristic(next)});
     }
   }

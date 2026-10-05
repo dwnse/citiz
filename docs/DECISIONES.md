@@ -59,3 +59,16 @@ PC primero; cámara alta con personaje completo; supervivencia, zombis, construc
 - Aparición busca posición libre alrededor del punto inicial/retorno; la reparación ya no resucita una bóveda destruida.
 - `MODE=production` deshabilita crear mundos vía HTTP; no habilita exposición pública ni añade cuentas de producción. La producción real sigue pendiente.
 - Guardado escribe y hace fsync del archivo temporal antes de rename. Sigue sin journal y con ventana de pérdida de cinco segundos. No se ha probado corte eléctrico.
+
+
+## 0.12 — Decisiones de supervivencia
+
+Confirmado por el usuario: prioridad funcional, construcción RTS con usos reales, recolección visible, mapa con contenido, jugabilidad intuitiva y dirección artística propia. La victoria mayor conserva el requisito original de comunidad única, autoría del Paciente 0, verdad y cura antes del plazo.
+
+Valores iniciales de balance, reversibles: recetas 70/30 con recuperados universales; 18 planos; un informe transportado; sitios renovables en 180 s; dos plazas por refugio; trabajadores asignados automáticamente; tres niveles de investigación; 12 monedas y un sello por victoria con contribución. Son cosméticos, no ventajas transferibles. La tienda queda pendiente.
+
+P pausa solo con un conectado y congela temporizadores de juego, pero no prolonga el mes real. Si se conecta otra persona, se reanuda. El ciclo visual de 10 minutos es independiente del calendario de campaña.
+
+La recuperación de la muestra tiene prioridad sobre hablar en el sello. Si cae la comunidad que mató al origen, el origen vuelve a estar disponible para impedir un bloqueo definitivo por autoría. Los colores cian del núcleo y la investigación del experimento conectan fabricación, historia y final; los modelos siguen siendo provisionales.
+
+Probado: reglas, persistencia, dos clientes Godot, renderizado y carga HTTP/SSE breve. Pendiente: equilibrio con jugadores humanos, accesibilidad más amplia, sesiones prolongadas, arte final, comportamiento físico de trabajadores y red externa.

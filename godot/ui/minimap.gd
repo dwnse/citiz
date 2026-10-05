@@ -23,8 +23,17 @@ func _draw() -> void:
 		var location := point(community.x, community.y)
 		draw_circle(location, 9, tint.darkened(0.55))
 		draw_circle(location, 4, tint if community.vault.hp > 0 else Color("df7667"))
+	for site in world.get("adventure",{}).get("sites",[]):
+		draw_rect(Rect2(point(site.x,site.y)-Vector2(2,2),Vector2(4,4)),Color("70ccc8"))
+	if world.get("adventure",{}).get("incident") is Dictionary:
+		var event: Dictionary = world.adventure.incident
+		draw_arc(point(event.x,event.y),6,0,TAU,16,Color("ffd17a"),2)
+	for resident in world.get("workers",[]): draw_circle(point(resident.x,resident.y),1.5,Color("edc07c"))
+	for resource in world.get("resources",[]):
+		if resource.hits>0: draw_circle(point(resource.x,resource.y),0.6,Color("708e66") if resource.kind=="tree" else Color("a0a8a6"))
 	for zombie in world.get("zombies", []):
 		draw_circle(point(zombie.x, zombie.y), 1.6, Color("db8972"))
+	for passage in world.get("adventure",{}).get("passages",[]): draw_circle(point(passage.x,passage.y),3,Color("c5a9eb"))
 	for mage in world.get("story", {}).get("mages", []):
 		draw_circle(point(mage.x, mage.y), 2.6, Color("c9a3e6"))
 	for player in world.get("players", []):

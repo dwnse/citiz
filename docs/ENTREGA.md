@@ -1,6 +1,16 @@
 # Entrega del corte vertical
 
-## Continuación 0.6 — entrega actual
+## Continuación 0.12 — entrega actual
+
+Supervivencia con materiales diferenciados, sprint y esquiva, tres armas, 18 construcciones, expediciones, población y producción, investigación y ciclo ambiental. El recorrido del Sello incluye Paciente 0, muestra, cura y recompensas únicas por cuenta. Guardados v6 con respaldo de versiones anteriores.
+
+Verificación al retomar la entrega el 4 de octubre de 2026: 74/74 pruebas Node aprobadas. El comando de sintaxis incluye ahora también adventure, inventory, rewards, harvesting y loot. Instrucciones, verificación nativa y límites en [SUPERVIVENCIA_012.md](SUPERVIVENCIA_012.md) y [PRUEBAS.md](PRUEBAS.md).
+
+Para jugar, inicia `node tools/start-godot.mjs` y abre uno de los proyectos Godot. Si el lanzador detecta un servidor anterior, cierra su consola con Ctrl+C y repite el arranque. Las pruebas utilizan guardados temporales.
+
+Pendientes: campaña humana completa con asedio y cura, balance prolongado, arte final, trabajadores visibles, túneles, tienda y red externa con 40 clientes gráficos.
+
+## Continuación 0.6 — registro histórico
 
 Prólogo breve de radio y bóveda, seis magos con pistas y recorridos cortos, diario J, seis poderes (2–7), maná, recargas y claves comunitarias para abrir el sello. Guardado v4 con copia exacta del formato anterior. Demostración reiniciada en http://127.0.0.1:3001.
 

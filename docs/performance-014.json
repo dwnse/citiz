@@ -1,0 +1,9 @@
+{
+  "average_fps": 142.667918041477,
+  "draw_calls": 363.0,
+  "frames": 714,
+  "p95_frame_ms": 7.006,
+  "renderer": "Compatibility",
+  "resolution": "1280x720",
+  "scenario": "2 clients, 3 infected, 5 structures, building mode, 5 seconds"
+}

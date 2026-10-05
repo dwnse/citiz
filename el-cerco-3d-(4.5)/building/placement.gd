@@ -27,11 +27,13 @@ static func snap(w: Dictionary, point: Vector2, kind: String, rotated: bool) -> 
 static func reason(w: Dictionary, p: Dictionary, point: Vector2, kind: String, rotated: bool) -> String:
 	var d := definition(w,kind)
 	if p.is_empty() or not p.get("alive",false): return "No puedes construir ahora"
-	if p.wood<d.cost: return "Materiales insuficientes"
+	if not can_pay(p,d): return "Falta receta: "+recipe_text(d)+" · Recuperados sustituyen materiales"
 	var v: Dictionary = w.vault
 	var radius := 18+int(v.get("upgrades",0))*6
 	var center := Vector2(v.x,v.y)
-	if v.hp<=0 or point.distance_to(center)>=radius or point.distance_to(center)<=4: return "Fuera del territorio"
+	if v.hp<=0: return "Bóveda destruida: no puedes construir en esta base"
+	if point.distance_to(center)>=radius: return "Coloca DENTRO del borde AZUL · Radio %d m · U junto a la bóveda amplía" % radius
+	if point.distance_to(center)<=4: return "El círculo ROJO protege la bóveda · Coloca fuera de ese círculo"
 	if Vector2(p.x,p.y).distance_to(center)>radius+6: return "Acércate a tu base"
 	if absf(point.x-50)<3 or (not w.get("legacy",false) and (absf(point.x-160)<3 or absf(point.y-105)<3)): return "Corredor público reservado"
 	var h := half(w,{"kind":kind,"rot":1 if rotated else 0})
@@ -46,9 +48,31 @@ static func reason(w: Dictionary, p: Dictionary, point: Vector2, kind: String, r
 	if count>=80: return "Límite de estructuras"
 	for o in w.get("obstacles",[]):
 		if absf(o.x-point.x)<o.sx+h.x and absf(o.y-point.y)<o.sy+h.y: return "Obstáculo en el terreno"
+	for r in w.get("resources",[]):
+		if r.hits>0 and absf(r.x-point.x)<h.x+1 and absf(r.y-point.y)<h.y+1: return "Tala o extrae el recurso antes de construir aquí"
 	for q in w.players+w.zombies:
 		if q.get("alive",true) and absf(q.x-point.x)<h.x+0.65 and absf(q.y-point.y)<h.y+0.65: return "Hay alguien en el plano"
 	return ""
 
 static func valid(w: Dictionary, p: Dictionary, point: Vector2) -> bool:
 	return reason(w,p,point,"wall",false).is_empty()
+
+static func recipe_text(d: Dictionary) -> String:
+	var names := {"timber":"madera","stone":"piedra","scrap":"chatarra"}
+	var parts: PackedStringArray = []
+	for key in d.get("recipe",{}): parts.append("%d %s" % [d.recipe[key],names.get(key,key)])
+	return " + ".join(parts) if not parts.is_empty() else "%d materiales" % d.cost
+
+static func can_pay(p: Dictionary,d: Dictionary) -> bool:
+	if not p.has("materials") or not d.has("recipe"): return p.wood>=d.cost
+	var reclaimed := int(p.materials.get("reclaimed",0))
+	for key in d.recipe: reclaimed-=maxi(0,int(d.recipe[key])-int(p.materials.get(key,0)))
+	return reclaimed>=0
+
+static func pay_preview(p: Dictionary,d: Dictionary) -> void:
+	if p.has("materials") and d.has("recipe"):
+		for key in d.recipe:
+			var n := mini(int(p.materials.get(key,0)),int(d.recipe[key]))
+			p.materials[key]=int(p.materials.get(key,0))-n
+			p.materials.reclaimed-=int(d.recipe[key])-n
+	p.wood-=d.cost
