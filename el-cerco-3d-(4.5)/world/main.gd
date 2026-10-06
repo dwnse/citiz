@@ -105,6 +105,8 @@ func _ready() -> void:
 		if order=="move":
 			set_build_mode(false)
 			hud.population_panel.hide()
+			hud.start_menu.selection.hide()
+			hud.sync_modal_layer()
 			target_worker=id
 			hud.notify_action("Residente seleccionado: clic izquierdo en suelo libre para mover. Esc o clic derecho: cancelar.",true)
 		else:
@@ -112,6 +114,11 @@ func _ready() -> void:
 	)
 	hud.cosmetic_requested.connect(func(style):
 		if network.connected: network.act("cosmetic",{"style":style})
+	)
+	hud.quick_action_requested.connect(func(action: String, payload: Dictionary):
+		if playable() and not hud.modal_open and action in ["consume", "reload", "cast"]:
+			suppress_fire_until_release = true
+			network.act(action, payload)
 	)
 	hud.pause_requested.connect(func(): network.act("pause"))
 	hud.weapon_requested.connect(func(kind):
@@ -434,7 +441,7 @@ func sync_props() -> void:
 
 func playable() -> bool:
 	var focused_control := get_viewport().gui_get_focus_owner()
-	return controls_focused and not (focused_control is LineEdit or focused_control is TextEdit) and network.connected and not me.is_empty() and not hud.lobby.visible and not hud.journal.visible and not hud.settings.visible and not hud.population_panel.visible and me.get("alive", false) and state.get("phase", "") == "active" and not state.get("adventure",{}).get("paused",false)
+	return controls_focused and not (focused_control is LineEdit or focused_control is TextEdit) and network.connected and not me.is_empty() and not hud.lobby.visible and not hud.modal_open and not hud.journal.visible and not hud.settings.visible and not hud.population_panel.visible and me.get("alive", false) and state.get("phase", "") == "active" and not state.get("adventure",{}).get("paused",false)
 
 func _process(delta: float) -> void:
 	if not Input.is_mouse_button_pressed(MOUSE_BUTTON_LEFT): suppress_fire_until_release=false

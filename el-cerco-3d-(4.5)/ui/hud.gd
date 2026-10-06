@@ -15,6 +15,7 @@ signal find_plot_requested
 signal pause_requested
 signal weapon_requested(kind: String)
 signal cosmetic_requested(style: String)
+signal quick_action_requested(action: String, payload: Dictionary)
 signal rebuild_requested
 
 var population_panel := preload("res://ui/population.gd").new()
@@ -26,6 +27,9 @@ var modal_frame := Control.new()
 var modal_open := false
 var background_focus: Dictionary = {}
 var gameplay_chrome: Array[Control] = []
+var gameplay_overlay: Control
+var legacy_survival_panel: Control
+var legacy_hotbar: Control
 var worlds := OptionButton.new()
 var communities := OptionButton.new()
 var community_cards := preload("res://ui/community_cards.gd").new()
@@ -348,6 +352,25 @@ func _ready() -> void:
 	gameplay_chrome.assign([panel, hotbar, controls, minimap, help_label, performance, status])
 	lobby.visibility_changed.connect(update_menu_presentation)
 	update_menu_presentation()
+	gameplay_overlay = preload("res://ui/gameplay_overlay.gd").new()
+	root.add_child(gameplay_overlay)
+	gameplay_overlay.configure(self, hotbar)
+	for navigation in controls.get_children():
+		if navigation is Button:
+			for state in ["normal", "hover", "pressed"]:
+				var skin: StyleBoxFlat = gameplay_overlay.plate()
+				if state == "hover": skin.border_color = Color("ffe08a")
+				if state == "pressed": skin.bg_color = Color("514627")
+				navigation.add_theme_stylebox_override(state, skin)
+	legacy_survival_panel = panel
+	legacy_hotbar = hotbar
+	gameplay_chrome.append(gameplay_overlay)
+	panel.hide()
+	hotbar.hide()
+	gameplay_overlay.visible = not lobby.visible
+	help_label.hide()
+	help_label.position = Vector2(24, -126)
+	performance.position = Vector2(1205, 701)
 	# Main submenus live above the background and its clickable controls.
 	root.add_child(modal_layer)
 	modal_layer.name = "ModalLayer"
@@ -410,6 +433,9 @@ func update_menu_presentation() -> void:
 	# The selector is reparented into the modal layer, so hiding the lobby
 	# must also hide it explicitly when the first playable state arrives.
 	start_menu.selection.hide()
+	if is_instance_valid(legacy_survival_panel):
+		legacy_survival_panel.hide()
+		legacy_hotbar.hide()
 	sync_modal_layer()
 
 func open_menu_selection() -> void:
@@ -663,3 +689,6 @@ func show_state(w: Dictionary, p: Dictionary, building: bool) -> void:
 			objective.text="GALERÍA · Gas: abre la válvula azul con E; consume resistencia y luego salud" if not safe else "GALERÍA VENTILADA · E en el armario recoge suministros · Busca la otra escalera"
 			for passage in adventure.get("passages",[]):
 				if passage.get("interior",false) and Vector2(passage.x-p.x,passage.y-p.y).length()<=3: objective.text="E · Salir de la galería · Sin coste de resistencia"
+
+	gameplay_overlay.update_state(w, p, building)
+	help_label.visible = false

@@ -12,10 +12,23 @@ func update_state(value: Dictionary, viewer: String) -> void:
 	queue_redraw()
 
 func point(x: float, y: float) -> Vector2:
-	return Vector2(8, 8) + Vector2(x, y) / float(world.get("size", 220)) * (size - Vector2(16, 16))
+	# An inscribed square retains every world landmark within the circular frame.
+	var span := (minf(size.x, size.y) - 24.0) / sqrt(2.0)
+	return size * 0.5 + (Vector2(x, y) / float(world.get("size", 220)) - Vector2(0.5, 0.5)) * span
 
 func _draw() -> void:
-	draw_rect(Rect2(Vector2.ZERO, size), Color(0.03, 0.06, 0.065, 0.9))
+	var center := size * 0.5
+	var radius := minf(size.x, size.y) * 0.5 - 5
+	draw_circle(center + Vector2(0, 3), radius + 4, Color("050906aa"))
+	draw_circle(center, radius, Color("243721ee"))
+	draw_arc(center, radius, 0, TAU, 96, Color("c2a970"), 3, true)
+	draw_arc(center, radius - 4, 0, TAU, 96, Color("74633c"), 1, true)
+	draw_line(Vector2(center.x - 5, 5), Vector2(center.x + 5, 5), Color("ffdf8a"), 3)
+	draw_string(ThemeDB.fallback_font, Vector2(center.x - 5, 19), "N", HORIZONTAL_ALIGNMENT_LEFT, -1, 12, Color("fff0bc"))
+	for tick in range(24):
+		var angle := float(tick) / 24.0 * TAU
+		var direction := Vector2(cos(angle), sin(angle))
+		draw_line(center + direction * (radius - 9), center + direction * (radius - 5), Color("ad9c6266"), 1, true)
 	if world.is_empty():
 		return
 	for community in world.get("communities", []):
