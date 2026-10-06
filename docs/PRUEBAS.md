@@ -1,4 +1,40 @@
-# Verificación — 3 de octubre de 2026
+# Verificación
+
+## Arte 021 — Fase 1
+
+119/119 pruebas Node y sintaxis aprobadas. Integración nativa general y prueba
+específica de animación con dos escenas conectadas: cero fallos en las dos
+carpetas Godot. Se verificaron ocho direcciones, apuntado, movimiento con disparo,
+recarga, persecución, contacto, daño, muerte y reaparición. Capturas y clip real
+en [ARTE_FASE_1.md](ARTE_FASE_1.md), junto con licencias, escenarios y límites.
+RX 580 2048SP a 1280×720: 144,28 FPS en muestra pequeña; 117,02 FPS en render
+estático con 96 infectados, 80 muros y 32 residentes, sin IA para los añadidos.
+
+## Verificación 0.20 — Fase 4
+
+118/118 pruebas Node aprobadas; comprobación sintáctica aprobada. Integración Godot 4.5.1 en ambas carpetas con previsión de oleada, balance de raciones y regresiones anteriores. Captura `population-020.png` revisada. Auditoría teórica en `BALANCE_020.json`, reproducible con `node tools/audit-balance.mjs`. No equivale a una campaña humana ni certifica equilibrio final. Valores, metodología y límites en EQUILIBRIO_020.md.
+
+## Verificación 0.19 — Fase 3
+
+114 pruebas Node aprobadas. Integración Godot 4.5.1 en ambas carpetas: recintos y pistas, señal de entrada y objetivo activo, además de las regresiones anteriores. Captura preparada `interior-019.png` revisada a 1280×720. Las reglas de combate/presencia, recompensa, persistencia, migración, fases y pausa se validan en servidor; no se ha completado una expedición humana ni una campaña completa. Detalles en MUNDO_CAMPANA_019.md.
+
+## Verificación 0.18 — Fase 2
+
+108/108 pruebas Node aprobadas, cero fallos. Integración nativa Godot 4.5.1 aprobada en ambas carpetas: listado individual, detener, selección/cancelación de destino y regreso a automático, además de las regresiones anteriores. Captura `population-018.png` revisada: panel y botones legibles a 1280×720. Datos y límites de la prueba de 32 trabajadores en RTS_018.md y performance-workers-018.json. La evasión no garantiza resolver toda congestión; no se ha certificado una campaña humana completa.
+
+## Verificación 0.17 — Fase 1 — 2026-10-05
+
+`npm run check` aprobado; 103/103 pruebas Node, cero fallos. La prueba nueva verifica reutilización de edificios y población dentro de un lote, aislamiento entre comunidades y renovación de datos tras cambios.
+
+Integración nativa aprobada con Godot 4.5.1 sin interfaz gráfica, tanto en `godot/` como en `el-cerco-3d-(4.5)/`. Verifica parada tras movimiento en curso, bloqueo al perder foco, reinicio de carrera al reconectar, corte real del canal y recuperación automática, conservación de identidad y edificios, cancelación al salir, sustitución de sesión sin bucles, límite de cinco reintentos y reconexión manual posterior. Se mantienen las pruebas de recarga, combate, construcción, recolección, galerías y guardado. Los scripts de ambas carpetas coinciden.
+
+Carga final aislada: 40 clientes, 96 infectados iniciales, 32 residentes y 36 edificios durante 140,49 s; 30 ticks/s, cero errores, entrada HTTP p95 de 55,42 ms y 2585,8 KiB/s recibidos. Comparación y límites en `CARGA_MIXTA_017.md`. No acredita sesiones largas en red externa ni 60 FPS constantes. Fase 2 pendiente de confirmación del usuario.
+
+## Verificación 0.16 — 2026-10-05
+
+102/102 pruebas Node aprobadas. Integración nativa sin interfaz gráfica aprobada en `godot/` y `el-cerco-3d-(4.5)/`, con Godot 4.5.1: reconstrucción de estados incrementales, secuencias, borrados, combate, recargas repetidas, construcción, recolección, galerías, reconexión y persistencia. No equivale a una sesión humana completa.
+
+Carga local con 40 clientes: 30 ticks/s, cero errores y tráfico reducido un 83,3 %. El p95 de entrada HTTP aumentó de 56,10 a 81,39 ms. Detalles y límites en `CARGA_MIXTA_016.md`; no se certifican FPS mediante esta prueba sin renderizado.
 
 ## Verificación 0.6 — 2026-10-03
 
@@ -113,3 +149,8 @@ La integración Godot pasa en los dos proyectos. Comprueba rótulos de jefe, mar
 91 pruebas Node y comprobación sintáctica aprobadas. Integración nativa en ambos proyectos. Trabajadores: ruta, carga guardada, entrega y recogida tras destruir puesto; paredes bloquean extracción. Radio: distancia, visión, caducidad y premio único. Colectores: salida libre y costes atómicos. Cosméticos: propiedad, saldo, repetición y equipamiento por sesión autenticada.
 
 Estrés gráfico a 1280×720 con 96 infectados, 80 muros y 32 residentes: 119,20 FPS medios frente a 50,14 antes de fusionar mallas rígidas; p95 10,39 ms. Es render sintético, sin IA de las entidades añadidas. Simulación separada de 32 residentes: tick medio 2,11 ms, p95 6,36 ms. Ver MUNDO_VIVO_014.md y sus reportes.
+
+
+## 0.15 — Galerías
+
+96 pruebas Node aprobadas y comprobación sintáctica correcta. Godot comprueba las dos galerías, ocho accesos, gas y ventilación. La carga combinada local mantuvo 30 ticks/s durante 137,09 s con 40 clientes, 96 infectados iniciales, 32 residentes y 36 edificios; sin errores HTTP/red. Tick p95 muestreado 23,57 ms. Detalles y límites: COLECTORES_015.md y CARGA_MIXTA_015.md.

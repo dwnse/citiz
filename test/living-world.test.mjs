@@ -66,7 +66,7 @@ test('aspectos usan saldo de cuenta, no dan ventajas y no cobran otra vez al equ
  const restored=JSON.parse(JSON.stringify(data));assert.deepEqual(cosmetics(restored,w.id,p.id).owned,['standard','ember']);
 });
 test('colectores validan distancia, salida, resistencia y espera sin cobrar intentos fallidos',()=>{
- const {w,p}=setup();p.stamina=100;assert.equal(travel(w,p,2000),false);assert.equal(p.stamina,100);
+ const {w,p}=setup();w.collectors={version:1,rooms:[]};p.stamina=100;assert.equal(travel(w,p,2000),false);assert.equal(p.stamina,100);
  p.x=PASSAGES[0].x;p.y=PASSAGES[0].y;
  w.obstacles=[{x:160,y:114,sx:6,sy:6}];assert.equal(travel(w,p,2000),false);assert.equal(p.stamina,100);
  w.obstacles=[];assert.equal(travel(w,p,2000),true);assert.equal(p.x,160);assert.equal(p.y,114);assert.equal(p.stamina,75);assert.equal(travel(w,p,2001),false);assert.equal(p.stamina,75);

@@ -1,0 +1,22 @@
+[
+  {
+    "Algorithm": "SHA256",
+    "Hash": "B4743962FD45A0236134FB841943D5E096C983B01301A5C0727B984C14D9E4E7",
+    "File": "assets-source\\characters\\Sam.gltf"
+  },
+  {
+    "Algorithm": "SHA256",
+    "Hash": "C6EAB64EF87F89CBD6862B59964B20024CA7E329D3D44F72C76FCED6C24861C8",
+    "File": "assets-source\\characters\\Zombie.gltf"
+  },
+  {
+    "Algorithm": "SHA256",
+    "Hash": "C1E0A69E053E663B9609BC18BDABBC978AF5C76A74C8C9C02E2072B0FE50EAEB",
+    "File": "godot\\assets\\characters\\Sam.glb"
+  },
+  {
+    "Algorithm": "SHA256",
+    "Hash": "987F840DC8068E80F2F4F0DAA92F6E158A8C347EFFE6D83ED522B14D3F2B7E68",
+    "File": "godot\\assets\\characters\\Zombie.glb"
+  }
+]

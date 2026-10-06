@@ -1,5 +1,8 @@
+import {collectorInteraction,collectorsTick} from './collectors.mjs';
 import {passages,travel} from './passages.mjs';
 import {populationView} from './population.mjs';
+import {BALANCE,nextWaveLevel} from './balance.mjs';
+import {workerOrder} from './workers.mjs';
 import {bossFields,bossTick,pruneFallen,RALLY} from './enemies.mjs';
 import {inventory,addMaterials,payRecipe} from './inventory.mjs';
 import {adventureAction,adventureTick,adventureView,initializeAdventure,markProgress,weapon,freezePause} from './adventure.mjs';
@@ -10,12 +13,12 @@ import {damageInfected,collectLoot} from './loot.mjs';
 import {solid,beginNavigation,direction} from './navigation.mjs';
 import {makeCommunities,faction,core,vaults,capacity,members,canRaid,protectedRoad,checkElimination,siegeStatus,SIEGE_PRESETS} from './communities.mjs';
 import {initializeStory,magicState,effect,interactStory,cast,storyTick,storyView,reservedStorySite} from './story.mjs';
-export const CONFIG = { tick: 30, size: 100, radius: 18, maxWalls: 80, waveSeconds: 35, duration: 30*86400000 };
+export const CONFIG = { tick: 30, size: 100, radius: 18, maxWalls: 80, waveSeconds: BALANCE.dayWaveSeconds, duration: 30*86400000 };
 export const dist = (a,b) => Math.hypot(a.x-b.x,a.y-b.y);
 export const buildRadius = (w,p) => CONFIG.radius+(core(w,p).upgrades||0)*6;
 export function createWorld(now=Date.now(),mode='development') {
   const communities=makeCommunities();
-  const world={version:6,id:randomUUID(),name:'Ciudad cercada',size:220,communities,vault:communities[0].vault,rules:{siege:{...SIEGE_PRESETS[mode]}},obstacles:communities.flatMap(c=>[{id:c.id+'-rock',x:c.x+16,y:c.y+7,sx:2,sy:5},{id:c.id+'-ruin',x:c.x+11,y:c.y-21,sx:5,sy:2}]),startedAt:now,phase:'active',players:{},walls:[],zombies:[],drops:communities.flatMap(c=>[{id:randomUUID(),x:c.x-6,y:c.y+11,...c.resources},{id:randomUUID(),x:c.x+7,y:c.y+8,...c.resources},{id:randomUUID(),x:c.x-10,y:c.y-6,...c.resources}]),wave:0,nextWave:now+45000,events:[],shots:[],tick:0};initializeStory(world,now);return world;
+  const world={version:6,id:randomUUID(),name:'Ciudad cercada',size:220,communities,vault:communities[0].vault,rules:{siege:{...SIEGE_PRESETS[mode]}},obstacles:communities.flatMap(c=>[{id:c.id+'-rock',x:c.x+16,y:c.y+7,sx:2,sy:5},{id:c.id+'-ruin',x:c.x+11,y:c.y-21,sx:5,sy:2}]),startedAt:now,phase:'active',players:{},walls:[],zombies:[],drops:communities.flatMap(c=>[{id:randomUUID(),x:c.x-6,y:c.y+11,...c.resources},{id:randomUUID(),x:c.x+7,y:c.y+8,...c.resources},{id:randomUUID(),x:c.x-10,y:c.y-6,...c.resources}]),wave:0,nextWave:now+BALANCE.firstWaveMs,events:[],shots:[],tick:0};initializeStory(world,now);return world;
 }
 export function join(w,id,name,communityId='forest') {
   if (w.players[id]) return w.players[id];
@@ -53,6 +56,7 @@ function performAction(w,p,msg,now,online) {
   const adventure=adventureAction(w,p,msg,now,online);if(adventure!==null)return adventure;
   const own=faction(w,p),v=core(w,p);
   switch(msg.type) {
+    case 'worker_order': return workerOrder(w,p,msg);
     case 'rebuild_vault': {
       if(v.hp>0){p.buildError='La bóveda sigue en pie. Usa E para repararla si está dañada.';return false;}
       if(dist(p,v)>6){p.buildError='Acércate a menos de 6 m de las ruinas de tu bóveda.';return false;}
@@ -104,6 +108,7 @@ function performAction(w,p,msg,now,online) {
     case 'interact': {
       const loot=w.drops.find(d=>dist(d,p)<3);if(loot)return collectLoot(w,p,loot);
       if(passages(w).some(t=>dist(t,p)<=3))return travel(w,p,now);
+      const collector=collectorInteraction(w,p,now);if(collector!==null)return collector;
       if(p.cargo&&dist(p,v)<=6)return adventureAction(w,p,{type:'deliver'},now,online);
       if(initializeAdventure(w).sites.some(s=>dist(s,p)<=4))return adventureAction(w,p,{type:'expedition'},now,online);
       if(interactStory(w,p,now))return true;
@@ -155,6 +160,7 @@ export function tick(w,inputs,online,dt,now=Date.now()) {
   if(now>=w.startedAt+CONFIG.duration){w.phase='expired';note(w,'El sello ha cedido. Partida terminada.');return;}
   if(w.pausedBy){freezePause(w,now);if(online.size===1&&online.has(w.pausedBy))return;w.pausedBy=null;}
   adventureTick(w,online,dt,now,inputs);
+  collectorsTick(w,online,dt,now,hurt);
   w.shots=w.shots.filter(s=>(s.life-=dt)>0);
   storyTick(w,dt,now,online);
   structuresTick(w,dt,now,online);
@@ -167,11 +173,11 @@ export function tick(w,inputs,online,dt,now=Date.now()) {
     if(p.reload>0){p.reload=Math.max(0,p.reload-dt);if(p.reload===0){const n=Math.max(0,Math.min(weapon(p).capacity-p.ammo,p.reserve));p.ammo+=n;p.reserve-=n;}}
     if(!p.alive){if(v.hp>0&&now>=p.respawn){const spawn=safeSpawn(w,{x:v.x-4,y:v.y+4});if(spawn){p.alive=true;p.hp=100;p.hunger=70;p.thirst=70;p.x=spawn.x;p.y=spawn.y;p.wood=Math.floor(p.wood*.8);}}continue;}
     if(!online.has(p.id))continue;
-    p.hunger=Math.max(0,(p.hunger??100)-dt*.04);p.thirst=Math.max(0,(p.thirst??100)-dt*.07);
+    p.hunger=Math.max(0,(p.hunger??100)-dt*BALANCE.hungerPerSecond);p.thirst=Math.max(0,(p.thirst??100)-dt*BALANCE.thirstPerSecond);
     if(p.hunger===0||p.thirst===0){p.hp=Math.max(0,p.hp-dt*2);if(p.hp===0){hurt(w,p,0,now);continue;}}
     const input=inputs.get(p.id);if(input&&now-input.at<350){const x=Math.max(-1,Math.min(1,input.x)),y=Math.max(-1,Math.min(1,input.y)),length=Math.hypot(x,y)||1,speed=(effect(p,'haste',now)?11.2:7)*(p.dodgeUntil>now?2.2:p.sprinting&&(p.stamina??100)>0?1.45:1);move(w,p,x/Math.max(1,length)*speed*dt,y/Math.max(1,length)*speed*dt);if(Number.isFinite(input.angle))p.angle=input.angle;}
   }
-  if(online.size&&now>=w.nextWave){if(w.zombies.length<65)spawnWave(w,1+Math.floor(w.wave/2)%3,online);w.nextWave=now+(w.adventure?.night?28:CONFIG.waveSeconds)*1000;}
+  if(online.size&&now>=w.nextWave){if(w.zombies.length<65)spawnWave(w,nextWaveLevel(w.wave),online);w.nextWave=now+(w.adventure?.night?BALANCE.nightWaveSeconds:CONFIG.waveSeconds)*1000;}
   for(const z of w.zombies){
     if(z.hp<=0)continue;
     z.attack=Math.max(0,z.attack-dt);
@@ -204,15 +210,15 @@ function hurt(w,p,damage,now){
   const absorbed=Math.min(p.armor,damage*.6);p.armor-=absorbed;p.hp-=damage-absorbed;
   if(p.hp<=0){if(p.sample){w.drops.push({id:randomUUID(),x:p.x,y:p.y,wood:0,ammo:0,sample:true});p.sample=false;}p.sprinting=false;p.hp=0;p.alive=false;p.respawn=now+6000;const m=magicState(p);m.effects={};m.shieldHp=0;note(w,`${p.name} ha caído${core(w,p).hp>0?' · regreso en 6 s':' · sin reaparición'}`);}
 }
-export function snapshot(w,id,online,now=Date.now()){
+export function snapshot(w,id,online,now=Date.now(),batch=new WeakMap()){
+  initializeAdventure(w);
   initializeResources(w);
+  const shared=(key,build)=>{if(!batch.has(key))batch.set(key,build());return batch.get(key);};
   const viewer=w.players[id];for(const p of Object.values(w.players))inventory(p);
-  return {...w,workers:(w.workers||[]).filter(q=>dist(q,viewer)<75),adventure:adventureView(w,viewer,now),population:populationView(w,faction(w,viewer),now),fallen:(w.fallen||[]).filter(z=>dist(z,viewer)<75),resources:w.resources.filter(r=>dist(r,viewer)<85),buildingCatalog:catalog(),story:storyView(w,viewer),effects:(w.effects||[]).filter(f=>dist(f,viewer)<75),vault:core(w,viewer),communityId:viewer.communityId,siege:siegeStatus(w,now),connectedCount:online.size,
+  return {...w,workers:(w.workers||[]).filter(q=>dist(q,viewer)<75),adventure:adventureView(w,viewer,now),population:shared(faction(w,viewer),()=>populationView(w,faction(w,viewer),now)),fallen:(w.fallen||[]).filter(z=>dist(z,viewer)<75),resources:w.resources.filter(r=>dist(r,viewer)<85),buildingCatalog:catalog(),story:storyView(w,viewer),effects:(w.effects||[]).filter(f=>dist(f,viewer)<75),vault:core(w,viewer),communityId:viewer.communityId,siege:siegeStatus(w,now),connectedCount:online.size,
     players:Object.values(w.players).filter(p=>p.communityId===viewer.communityId||dist(p,viewer)<70).map(p=>{
       const {seq,...q}=p;
         if(p.communityId!==viewer.communityId)return {id:p.id,name:p.name,x:p.x,y:p.y,hp:p.hp,armor:p.armor,alive:p.alive,angle:p.angle,appearance:p.appearance,equipped:p.equipped||'weapon',toolSwing:p.toolSwing||0,communityId:p.communityId,online:online.has(p.id)};
       return {...q,online:online.has(p.id)};
-    }),zombies:w.zombies.filter(z=>dist(z,viewer)<75),walls:w.walls.filter(b=>dist(b,viewer)<85).map(b=>({...b,operation:structureStatus(w,b,now)})),drops:w.drops.filter(d=>dist(d,viewer)<75),shots:w.shots.filter(s=>dist(s,viewer)<75),you:id};
+    }),zombies:w.zombies.filter(z=>dist(z,viewer)<75),walls:w.walls.filter(b=>dist(b,viewer)<85).map(b=>shared(b,()=>({...b,operation:structureStatus(w,b,now)}))),drops:w.drops.filter(d=>dist(d,viewer)<75),shots:w.shots.filter(s=>dist(s,viewer)<75),you:id};
 }
-
-

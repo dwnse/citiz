@@ -1,0 +1,50 @@
+Godot Engine v4.5.1.stable.official.f62fdbde1 - https://godotengine.org
+OpenGL API 3.3.0 Core Profile Context 26.5.2.260413 - Compatibility - Using Device: ATI Technologies Inc. - AMD Radeon RX 580 2048SP
+
+PASS first graphic client connected
+PASS two main scenes share authoritative common zombie
+PASS agent uses imported skinned mesh
+PASS common zombie uses imported skeleton
+PASS direction 0 replicated
+PASS pistol follows aim 0 (1.000)
+PASS leg scale preserved 0
+PASS direction 1 replicated
+PASS pistol follows aim 1 (1.000)
+PASS leg scale preserved 1
+PASS direction 2 replicated
+PASS pistol follows aim 2 (0.999)
+PASS leg scale preserved 2
+PASS direction 3 replicated
+PASS pistol follows aim 3 (1.000)
+PASS leg scale preserved 3
+PASS direction 4 replicated
+PASS pistol follows aim 4 (1.000)
+PASS leg scale preserved 4
+PASS direction 5 replicated
+PASS pistol follows aim 5 (0.999)
+PASS leg scale preserved 5
+PASS direction 6 replicated
+PASS pistol follows aim 6 (1.000)
+PASS leg scale preserved 6
+PASS direction 7 replicated
+PASS pistol follows aim 7 (1.000)
+PASS leg scale preserved 7
+PASS one shot animates on both clients
+PASS shooting keeps locomotion running
+PASS reload animation starts on both clients
+PASS reload ends with server
+PASS repeated snapshots do not restart reload
+PASS zombie pursues in live scene
+PASS authoritative common zombie killed
+PASS removed zombie plays one death before freeing
+PASS zombie damage reaction ran before death
+PASS contact fixture spawned
+PASS server contact starts zombie attack
+PASS player death synchronized on both rigs
+PASS death is not restarted by repeated snapshots
+PASS damage reaction reaches both clients
+PASS two server contacts cause two attacks and exactly 18 damage
+PASS corpse mesh freed after death clip
+PASS server respawn occurs
+PASS respawn resets skeletal pose and movement
+ART_SMOKE failures=0

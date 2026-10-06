@@ -1,15 +1,19 @@
 import {addMaterials} from './inventory.mjs';
 import {randomUUID} from 'node:crypto';
+import {supplyLoot} from './balance.mjs';
 export function zombieLoot(w,z,killerCommunity=null,now=Date.now()){
   if(z.lootDropped)return;
   z.lootDropped=true;
+  // Short-lived presentation event, including resurrected enemies that cannot
+  // become gameplay corpses again. Damage and loot still execute exactly once.
+  w.effects??=[];
+  w.effects.push({id:'death-'+z.id+'-'+now,power:'death',actorId:z.id,x:z.x,y:z.y,life:2});
   if(z.finalBoss){
     if(w.story?.patient){w.story.patient.defeated=true;w.story.patient.defeatedBy=killerCommunity;}
     w.drops.push({id:randomUUID(),x:z.x,y:z.y,wood:0,ammo:24,sample:true});return;
   }
   if(!z.boss&&!z.reanimated){w.fallen??=[];w.fallen.push({id:z.id,x:z.x,y:z.y,maxHp:z.maxHp||68,level:z.level||1,variant:z.variant||'walker',diedAt:now});w.fallen=w.fallen.slice(-64);}
-  const roll=[...String(z.id)].reduce((n,c)=>n+c.charCodeAt(0),0)%4;
-  w.drops.push({id:randomUUID(),x:z.x,y:z.y,wood:0,ammo:roll<2?12:6,food:roll===2?2:0,water:roll===3?2:0,medical:roll===1?1:0});
+  w.drops.push({id:randomUUID(),x:z.x,y:z.y,wood:0,...supplyLoot(z.id,z.boss)});
 }
 export function collectLoot(w,p,d){
   if(d.materials){for(const [key,n] of Object.entries(d.materials))addMaterials(p,key,n);}else addMaterials(p,'reclaimed',d.wood||0);p.reserve+=d.ammo||0;

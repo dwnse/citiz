@@ -1,0 +1,8 @@
+[gd_scene load_steps=3 format=3]
+
+[ext_resource type="Script" path="res://player/rig_visual.gd" id="1"]
+[ext_resource type="PackedScene" path="res://assets/characters/Sam.glb" id="2"]
+
+[node name="AgentVisual" type="Node3D"]
+script = ExtResource("1")
+model_scene = ExtResource("2")

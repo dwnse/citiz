@@ -1,3 +1,5 @@
+import {BALANCE} from './src/balance.mjs';
+import {DeltaEncoder,createEncodingContext} from './src/replication.mjs';
 import {profileFor,settleRewards,cosmetics,cosmeticAction} from './src/rewards.mjs';
 import http from 'node:http';
 import {readFileSync} from 'node:fs';
@@ -14,8 +16,11 @@ export function createServer({directory=root+'data',clock=()=>Date.now(),mode='d
   const store=openStore(directory,clock(),mode),{worlds,accounts}=store.data;
   const world=worlds[0];
   const sessions=new Map(),streams=new Map(),inputs=new Map(),actionRates=new Map();let cpuMs=0,bytes=0;
+  const encoders=new WeakMap(),nextSend=new WeakMap();let nextPhase=0;
+  function replaceStream(id){const old=streams.get(id);if(old)old.end('event: session-replaced\ndata: {}\n\n');}
+  function frame(res,w,id,present,now,context){const state=view(w,id,present,now,context?.views),encoder=encoders.get(res);return `data: ${JSON.stringify(encoder?encoder.encode(state,context):state)}\n\n`;}
   function save(){settleRewards(store.data);store.save();}
-  function view(w,id,present,now){return {...snapshot(w,id,present,now),cosmetics:cosmetics(store.data,w.id,id)};}
+  function view(w,id,present,now,batch){return {...snapshot(w,id,present,now,batch),cosmetics:cosmetics(store.data,w.id,id)};}
   function online(w=world){return new Set([...streams.keys()].filter(id=>w.players[id]));}
   function send(res,status,obj){res.writeHead(status,{'Content-Type':'application/json'});res.end(JSON.stringify(obj));}
   const server=http.createServer(async(req,res)=>{
@@ -23,14 +28,15 @@ export function createServer({directory=root+'data',clock=()=>Date.now(),mode='d
     const origin=req.headers.origin;
     if(origin&&origin!==`http://${req.headers.host}`)return send(res,403,{error:'Origen no permitido'});
     try {
-      if(req.method==='GET'&&url.pathname==='/api/protocol')return send(res,200,{protocol:1,saveVersion:6,build:'0.14.0',features:['harvesting','vault-rebuild','adventure','typed-materials','patient-zero','boss-variants','population','workers','incidents','cosmetics'],transport:'http-sse',tickHz:CONFIG.tick,snapshotHz:10,coordinates:'x,y -> Godot x,0,z'});
+      if(req.method==='GET'&&url.pathname==='/api/protocol')return send(res,200,{protocol:1,saveVersion:6,build:'0.20.0',features:['harvesting','vault-rebuild','adventure','typed-materials','patient-zero','boss-variants','population','workers','incidents','cosmetics','collectors','delta-snapshots','worker-orders','expedition-interiors','balanced-survival'],transport:'http-sse',tickHz:CONFIG.tick,snapshotHz:10,coordinates:'x,y -> Godot x,0,z'});
       if(req.method==='GET'&&url.pathname==='/api/worlds')return send(res,200,{worlds:worlds.map(w=>({id:w.id,name:w.name,phase:w.phase,remaining:Math.max(0,w.startedAt+CONFIG.duration-clock()),members:Object.keys(w.players).length,capacity:capacity(w),online:online(w).size,communities:w.communities.map(c=>({id:c.id,name:c.name,region:c.region,color:c.color,members:members(w,c).length,capacity:10,eliminated:c.eliminated,vaultAlive:c.vault.hp>0}))})),mode});
       const token=req.headers.cookie?.split(';').map(x=>x.trim()).find(x=>x.startsWith('cerco='))?.slice(6),session=sessions.get(token),id=session?.id;
       const current=worlds.find(w=>w.id===session?.worldId);
       if(req.method==='GET'&&url.pathname==='/api/events'){
         if(!id||!current||(url.searchParams.has('worldId')&&url.searchParams.get('worldId')!==current.id))return send(res,401,{error:'Ingresa primero'});
-        streams.get(id)?.end();res.writeHead(200,{'Content-Type':'text/event-stream','Cache-Control':'no-cache','Connection':'keep-alive'});streams.set(id,res);
-        res.write(`data: ${JSON.stringify(view(current,id,online(current),clock()))}\n\n`);
+        replaceStream(id);res.writeHead(200,{'Content-Type':'text/event-stream','Cache-Control':'no-cache','Connection':'keep-alive'});streams.set(id,res);nextSend.set(res,performance.now()+100+(nextPhase++%10)*10);
+        if(url.searchParams.get('delta')==='1')encoders.set(res,new DeltaEncoder());
+        const initial=frame(res,current,id,online(current),clock());bytes+=Buffer.byteLength(initial);res.write(initial);
         req.on('close',()=>{if(streams.get(id)===res){streams.delete(id);inputs.delete(id);}});return;
       }
       if(req.method==='POST'){
@@ -57,10 +63,10 @@ export function createServer({directory=root+'data',clock=()=>Date.now(),mode='d
           if(identity)playerId=identity.id;
           else {if(Object.keys(chosen.players).length>=capacity(chosen)||chosen.phase!=='active')return send(res,409,{error:'Mundo cerrado o lleno'});playerId=randomUUID();}
           const wasEmpty=!Object.keys(chosen.players).length;
-          const p=join(chosen,playerId,msg.name,msg.communityId||'forest'),key=msg.key||Object.entries(accounts).find(([,a])=>a.id===playerId&&a.worldId===chosen.id)?.[0]||randomUUID();accounts[key]={id:playerId,worldId:chosen.id,profileId};p.appearance=profileFor(store.data,accounts[key]).equipped||'standard';
-          if(wasEmpty){chosen.startedAt=clock();chosen.nextWave=clock()+45000;}
+          const p=join(chosen,playerId,msg.name,msg.communityId||'forest'),key=msg.key||Object.entries(accounts).find(([,a])=>a.id===playerId&&a.worldId===chosen.id)?.[0]||randomUUID();accounts[key]={id:playerId,worldId:chosen.id,profileId};p.sprinting=false;p.appearance=profileFor(store.data,accounts[key]).equipped||'standard';
+          if(wasEmpty){chosen.startedAt=clock();chosen.nextWave=clock()+BALANCE.firstWaveMs;}
           for(const [old,s]of sessions)if(s.id===playerId)sessions.delete(old);
-          streams.get(playerId)?.end();streams.delete(playerId);inputs.delete(playerId);
+          replaceStream(playerId);streams.delete(playerId);inputs.delete(playerId);
           const nextSession=randomUUID();sessions.set(nextSession,{id:playerId,worldId:chosen.id});save();res.setHeader('Set-Cookie',`cerco=${nextSession}; HttpOnly; SameSite=Strict; Path=/`);
           return send(res,200,{id:playerId,key,seq:p.seq,worldId:chosen.id,communityId:p.communityId});
         }
@@ -95,11 +101,16 @@ export function createServer({directory=root+'data',clock=()=>Date.now(),mode='d
     const steps=Math.min(5,Math.floor(accumulator*CONFIG.tick));
     accumulator-=steps/CONFIG.tick;
     for(const w of worlds){
-      const present=online(w),before=Math.floor(w.tick/3);
+      const present=online(w),encodingContext=createEncodingContext();
       for(let step=0;step<steps;step++)tick(w,inputs,present,1/CONFIG.tick,clock());
-      if(Math.floor(w.tick/3)!==before)for(const id of present){
-        const res=streams.get(id);if(res.writableLength>1000000){res.end();streams.delete(id);continue;}
-        const data=`data: ${JSON.stringify(view(w,id,present,clock()))}\n\n`;bytes+=Buffer.byteLength(data);res.write(data);
+      for(const id of present){
+        const res=streams.get(id),due=nextSend.get(res)||start;
+        if(start<due)continue;
+        // Spread 10 Hz delivery over the 10 ms scheduler, independent of physics ticks.
+        // Skip missed deliveries after a stall rather than burst old snapshots.
+        nextSend.set(res,due+(Math.floor((start-due)/100)+1)*100);
+        if(res.writableLength>1000000){res.end();streams.delete(id);continue;}
+        const data=frame(res,w,id,present,clock(),encodingContext);bytes+=Buffer.byteLength(data);res.write(data);
       }
     }
     if(steps)cpuMs=(performance.now()-start)/steps;
@@ -111,4 +122,3 @@ if(process.argv[1]===fileURLToPath(import.meta.url)){
   const app=createServer({directory:process.env.DATA_DIR||root+'data',mode:process.env.MODE||'development'}),port=Number(process.env.PORT||3000);app.server.listen(port,'127.0.0.1',()=>console.log(`EL CERCO · http://127.0.0.1:${port}`));
   for(const signal of ['SIGINT','SIGTERM'])process.on(signal,async()=>{await app.close();process.exit(0);});
 }
-

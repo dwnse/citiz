@@ -69,3 +69,19 @@ Build 0.13.0 anuncia boss-variants y population. staff {id} prioriza un puesto y
 ## Extensiones 0.14
 
 Build 0.14.0 añade capacidades `workers`, `incidents`, `cosmetics`. `workers` contiene residentes visibles a 75 m (posición, estado, carga); las rutas no se serializan. `adventure.incident` comunica la señal activa y `adventure.passages` los accesos. `interact` usa el colector a 3 m; `travel` también permite la acción explícita, con validación autoritativa. `cosmetic` recibe `style` y la secuencia habitual, utiliza exclusivamente el perfil de la sesión y guarda inmediatamente. `cosmetics` devuelve catálogo, propiedad, saldo y aspecto activo. Ninguna compra modifica estadísticas de combate.
+
+
+## Extensiones 0.15
+
+Capacidad `collectors`; `adventure.collectors` expone recintos, válvulas y esperas compartidas. `adventure.passages` contiene accesos interiores con coste 0 y entradas con coste 25. `interact` ventila o registra el armario, validando proximidad, visión, estado y secuencia. El servidor valida salida libre antes de cobrar. Estado opcional `collectors` en guardado v6.
+
+
+## Extensión 0.16: delta-snapshots
+
+`GET /api/events?delta=1` negocia mensajes `{wire:1,seq,state}` completos o `{wire:1,seq,base,set,remove,objects,entities}` parciales. Cada conexión empieza completa y recibe otra base cada 100 mensajes. Los mensajes se calculan sobre la vista filtrada del observador. `entities` usa identificadores, campos modificados, borrados y orden opcional; `objects` cambia campos de objetos superiores. Cliente Godot rechaza saltos de secuencia. Sin el parámetro se conserva el formato anterior. El servidor distribuye clientes en tres fases manteniendo 10 Hz por conexión. Guardado v6 sin cambios.
+
+## Extensión 0.17: recuperación y programación de envíos
+
+Al reemplazar una conexión se envía `event: session-replaced` con `data: {}` antes del cierre. Godot cancela la recuperación automática y muestra que el perfil está abierto en otra conexión. Un corte ordinario inicia hasta cinco reintentos usando la identidad guardada; abandonar o entrar manualmente invalida los callbacks anteriores y cancela los reintentos. Las acciones pendientes no se reenvían.
+
+La distribución de tres fases de 0.16 se sustituye por diez posiciones temporales dentro de 100 ms, atendidas por el programador de 10 ms. Se conservan 10 Hz por conexión y 30 Hz de física; tras un bloqueo se omiten envíos vencidos. El estado de carrera se reinicia al ingresar. Guardado v6 y protocolo 1 conservados.

@@ -16,4 +16,4 @@ for(const c of w.communities){
 for(let i=0;i<1800;i++){const start=performance.now();tick(w,new Map(),online,1/30,2000+i*1000/30);samples.push(performance.now()-start);}
 samples.sort((a,b)=>a-b);
 const result={scenario:'60 simulated seconds, 32 residents, 48 buildings, four online agents; no zombies, network or render',workers:w.workers.length,delivered:w.walls.reduce((n,b)=>n+(b.stock||0),0),meanTickMs:samples.reduce((a,b)=>a+b,0)/samples.length,p95TickMs:samples[Math.floor(samples.length*.95)],maxTickMs:samples.at(-1)};
-writeFileSync('docs/performance-workers-014.json',JSON.stringify(result,null,2));console.log(result);
+writeFileSync('docs/performance-workers-018.json',JSON.stringify(result,null,2));console.log(result);

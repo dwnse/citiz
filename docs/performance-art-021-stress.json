@@ -1,0 +1,7 @@
+{
+  "average_fps": 117.01719573682,
+  "draw_calls": 1887.0,
+  "p95_frame_ms": 10.646,
+  "resolution": "1280x720",
+  "scenario": "Static render stress: 96 infected, 80 walls, 32 residents; no simulated AI for added entities"
+}

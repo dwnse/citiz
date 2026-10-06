@@ -3,6 +3,7 @@ const Art = preload("res://world/art.gd")
 const Shapes = preload("res://world/shapes.gd")
 @export var zombie := false
 var worker := false
+var legacy_model := false
 var cargo_model: Node3D
 var insignia: MeshInstance3D
 var last_style := ""
@@ -22,8 +23,13 @@ var last_weapon := "pistol"
 var last_attack := 0.0
 var hit_time := 0.0
 var initialized := false
+var visual: Node3D
+var retiring := false
 
 func _ready() -> void:
+	if not worker and not legacy_model:
+		_ready_rig()
+		return
 	body = Node3D.new()
 	body.name = "Body"
 	add_child(body)
@@ -107,7 +113,47 @@ func _ready() -> void:
 		library.add_animation(state_name, animation)
 	animator.add_animation_library("", library)
 
+func _ready_rig() -> void:
+	visual=load("res://zombies/common_visual.tscn" if zombie else "res://player/agent_visual.tscn").instantiate()
+	add_child(visual)
+	body=visual
+	# Keep the public equipment handles used by gameplay and smoke tests.
+	gun=MeshInstance3D.new() if zombie else visual.gun
+	if zombie: add_child(gun)
+	tool_model=Node3D.new()
+	if zombie:
+		add_child(tool_model)
+	else:
+		visual.hand.add_child(tool_model)
+		tool_model.transform=gun.transform
+		Shapes.box(tool_model,Vector3(0.07,0.65,0.07),Vector3(0,0.2,0),Color("78694e"))
+		Shapes.box(tool_model,Vector3(0.4,0.17,0.09),Vector3(0,0.5,0),Color("8c9c9c"))
+	tool_model.visible=false
+	cargo_model=Node3D.new()
+	add_child(cargo_model)
+	cargo_model.visible=false
+	insignia=Shapes.box(visual,Vector3(0.14,0.09,0.025),Vector3(0,1.5,-0.32),Color("81917b"))
+	insignia.visible=false # Imported uniform carries the cosmetic tint instead.
+	caption=Shapes.label(self,"INFECTADO" if zombie else "AGENTE")
+	if zombie:
+		rally_ring=Shapes.cylinder(self,0.85,0.05,Vector3(0,0.1,0),Color(1,0.6,0.2,0.5))
+		rally_ring.visible=false
+		caption.font_size=32
+		caption.pixel_size=0.016
+
+func retire() -> void:
+	if retiring: return
+	retiring=true
+	caption.visible=false
+	if is_instance_valid(rally_ring): rally_ring.visible=false
+	if is_instance_valid(visual):
+		visual.finish_death()
+		await get_tree().create_timer(1.8).timeout
+	queue_free()
+
 func update_state(value: Dictionary) -> void:
+	if retiring: return
+	if is_instance_valid(visual): visual.update_snapshot(value)
 	data = value
 	var style_id: String = str(value.get("appearance","standard"))
 	if style_id!=last_style:
@@ -118,12 +164,12 @@ func update_state(value: Dictionary) -> void:
 		position = target
 		initialized = true
 	var hp := float(value.get("hp", 100))
-	if hp < last_hp:
+	if hp < last_hp and not is_instance_valid(visual):
 		animator.play("hurt")
 		hit_time = 0.25
 	last_hp = hp
 	var ammo := int(value.get("ammo", 12))
-	if ammo < last_ammo and value.get("weapon","pistol")==last_weapon:
+	if ammo < last_ammo and value.get("weapon","pistol")==last_weapon and not is_instance_valid(visual):
 		animator.play("shoot")
 		hit_time = 0.25
 	last_ammo = ammo
@@ -133,17 +179,17 @@ func update_state(value: Dictionary) -> void:
 	tool_model.visible=has_tool or (worker and value.get("status","")=="Extrayendo")
 	cargo_model.visible=worker and value.get("cargo") is Dictionary
 	var swing := int(value.get("toolSwing",0))
-	if swing>last_swing:
+	if swing>last_swing and not is_instance_valid(visual):
 		animator.play("attack")
 		hit_time=0.5
 	last_swing=swing
 	var attack := float(value.get("attack", 0))
-	if zombie and attack > last_attack:
+	if zombie and attack > last_attack and not is_instance_valid(visual):
 		animator.play("attack")
 		hit_time = 0.25
 	last_attack = attack
 	if is_instance_valid(rally_ring): rally_ring.visible=float(value.get("rallyUntil",0))>Time.get_unix_time_from_system()*1000
-	visible = value.get("alive", true)
+	visible = true if is_instance_valid(visual) else value.get("alive", true)
 	scale = Vector3.ONE * (1.6 if value.get("boss", false) else 1.0)
 	caption.text = "%d PV" % int(hp) if zombie else "%s · %d" % [value.get("name", "AGENTE"), int(hp)]
 	if zombie:
@@ -154,7 +200,7 @@ func update_state(value: Dictionary) -> void:
 		if float(value.get("interruptedUntil",0))>Time.get_unix_time_from_system()*1000: caption.text+="\nINTERRUMPIDO"
 		if value.get("variant","")=="brute": scale=Vector3(1.35,1.2,1.35)
 		if value.get("variant","")=="runner": scale=Vector3(0.85,1.1,0.85)
-	if not zombie: gun.scale.z=1.0 if value.get("weapon","pistol")=="pistol" else 1.8
+	if not zombie and not is_instance_valid(visual): gun.scale.z=1.0 if value.get("weapon","pistol")=="pistol" else 1.8
 	caption.visible = not zombie or value.get("boss",false) or hp < float(value.get("maxHp", 100))
 	caption.modulate = Color("fbbd83") if zombie else Color("c6e78a")
 	if worker:
@@ -163,8 +209,9 @@ func update_state(value: Dictionary) -> void:
 		caption.modulate=Color("edc07c")
 
 func _process(delta: float) -> void:
-	if not initialized:
+	if not initialized or retiring:
 		return
+	var previous := position
 	var distance := position.distance_to(target)
 	if distance > 10:
 		position = target
@@ -174,7 +221,11 @@ func _process(delta: float) -> void:
 		if distance > 0.05:
 			rotation.y = lerp_angle(rotation.y, atan2(-(target.x-position.x), -(target.z-position.z)), minf(1, delta * 12))
 	else:
-		rotation.y = -float(data.get("angle", 0)) - PI / 2
+		if not is_instance_valid(visual) or not visual.dead:
+			rotation.y = -float(data.get("angle", 0)) - PI / 2
+	if is_instance_valid(visual):
+		visual.tick(delta,basis.inverse()*(position-previous)/maxf(delta,0.001))
+		return
 	hit_time -= delta
 	work_clock+=delta
 	if tool_model.visible: tool_model.rotation.x=sin(work_clock*7)*0.8 if worker else sin(maxf(0,hit_time)*PI*2)*1.2

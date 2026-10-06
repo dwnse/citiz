@@ -1,4 +1,7 @@
 extends Node
+const Replication = preload("res://network/replication.gd")
+var state_sequence := 0
+var delta_frames := 0
 ## HTTP intentions and incremental SSE snapshots. Node owns all gameplay.
 signal snapshot_received(state: Dictionary)
 signal status_changed(message: String)
@@ -25,6 +28,10 @@ var action_queue: Array[Dictionary] = []
 var generation := 0
 var last_frame_ms := 0
 var profile_path := ""
+var reconnect_target: Dictionary = {}
+var reconnect_attempt := 0
+var reconnect_at := 0
+var pending_input: Dictionary = {}
 
 func _ready() -> void:
 	for arg in OS.get_cmdline_user_args():
@@ -64,7 +71,7 @@ func refresh_worlds() -> void:
 	if protocol.get("protocol", 0) != 1:
 		status_changed.emit("Servidor no compatible o apagado. Inicia node tools/start-godot.mjs.")
 		return
-	if not "workers" in protocol.get("features",[]):
+	if not "balanced-survival" in protocol.get("features",[]):
 		directory_received.emit([])
 		status_changed.emit("Servidor antiguo: cierra su consola con Ctrl+C, ejecuta node tools/start-godot.mjs y pulsa Actualizar partidas.")
 		return
@@ -80,8 +87,12 @@ func create_world() -> void:
 		status_changed.emit(str(result.error))
 	await refresh_worlds()
 
-func enter(selected_world: String, community: String, agent_name: String) -> void:
-	disconnect_world()
+func enter(selected_world: String, community: String, agent_name: String, retry := false) -> void:
+	if not retry:
+		disconnect_world()
+		reconnect_target = {"world":selected_world,"community":community,"name":agent_name}
+	else:
+		close_transport()
 	var ticket := generation
 	var body := {"worldId": selected_world, "communityId": community, "name": agent_name}
 	if identities.has(selected_world):
@@ -93,7 +104,11 @@ func enter(selected_world: String, community: String, agent_name: String) -> voi
 	if ticket != generation:
 		return
 	if result.has("error"):
-		status_changed.emit(str(result.error))
+		if retry and int(result.get("_status",0)) not in [400,401,403,404,409]:
+			fail_stream(str(result.error))
+		else:
+			reconnect_target.clear()
+			status_changed.emit(str(result.error))
 		return
 	for header in result._headers:
 		if str(header).to_lower().begins_with("set-cookie:"):
@@ -115,6 +130,12 @@ func enter(selected_world: String, community: String, agent_name: String) -> voi
 		fail_stream("No se pudo abrir el canal de estados.")
 
 func disconnect_world() -> void:
+	reconnect_target.clear()
+	reconnect_attempt = 0
+	reconnect_at = 0
+	close_transport()
+
+func close_transport() -> void:
 	generation += 1
 	stream.close()
 	streaming = false
@@ -122,19 +143,34 @@ func disconnect_world() -> void:
 	cookie = ""
 	buffer.clear()
 	action_queue.clear()
+	pending_input.clear()
+	input_busy = false
+	action_busy = false
 	latest = {}
+	state_sequence=0
+	delta_frames=0
 
 func fail_stream(message: String) -> void:
-	disconnect_world()
-	status_changed.emit(message + " Pulsa Reconectar para volver con la misma identidad.")
+	close_transport()
+	if reconnect_target.is_empty() or reconnect_attempt >= 5:
+		reconnect_at = 0
+		status_changed.emit(message + " No se pudo recuperar la conexión. Pulsa Reconectar o vuelve a la sala.")
+		return
+	var delay := mini(8, int(pow(2,reconnect_attempt)))
+	reconnect_attempt += 1
+	reconnect_at = Time.get_ticks_msec() + delay * 1000
+	status_changed.emit("Conexión perdida · Reintentando en %d s (%d/5). Tus acciones pendientes se cancelaron." % [delay,reconnect_attempt])
 
 func _process(_delta: float) -> void:
+	if reconnect_at > 0 and Time.get_ticks_msec() >= reconnect_at:
+		reconnect_at = 0
+		enter(reconnect_target.world,reconnect_target.community,reconnect_target.name,true)
 	if not streaming:
 		return
 	stream.poll()
 	var state := stream.get_status()
 	if state == HTTPClient.STATUS_CONNECTED and not stream_requested:
-		var error := stream.request(HTTPClient.METHOD_GET, "/api/events?worldId=" + world_id, PackedStringArray(["Cookie: " + cookie]))
+		var error := stream.request(HTTPClient.METHOD_GET, "/api/events?delta=1&worldId=" + world_id, PackedStringArray(["Cookie: " + cookie]))
 		stream_requested = true
 		if error != OK:
 			fail_stream("Error al solicitar estados.")
@@ -166,12 +202,26 @@ func consume_frames() -> void:
 	while end >= 0:
 		var frame := buffer.slice(0, end).get_string_from_utf8()
 		buffer = buffer.slice(end + 2)
+		if frame.begins_with("event: session-replaced"):
+			disconnect_world()
+			status_changed.emit("Este perfil se abrió en otra conexión. Usa un perfil distinto para jugar con otra persona.")
+			return
 		if frame.begins_with("data: "):
 			var parsed = JSON.parse_string(frame.substr(6))
+			if parsed is Dictionary and parsed.has("wire"):
+				var decoded: Dictionary = Replication.apply(latest,state_sequence,parsed)
+				if decoded.has("error"):
+					fail_stream(str(decoded.error))
+					return
+				if parsed.has("base"): delta_frames+=1
+				state_sequence=decoded.sequence
+				parsed=decoded.state
 			if parsed is Dictionary and int(parsed.get("version", 0)) in [4, 5, 6]:
 				latest = parsed
 				if not connected:
 					status_changed.emit("Conectado · Partida guardada automáticamente")
+				reconnect_attempt = 0
+				reconnect_at = 0
 				connected = true
 				last_frame_ms = Time.get_ticks_msec()
 				snapshot_received.emit(latest)
@@ -182,14 +232,34 @@ func consume_frames() -> void:
 				break
 
 func send_input(direction: Vector2, angle: float) -> void:
-	if not connected or input_busy:
+	if not connected:
+		return
+	pending_input = {"x": direction.x, "y": direction.y, "angle": angle, "worldId": world_id}
+	flush_input()
+
+func flush_input() -> void:
+	if input_busy or pending_input.is_empty() or not connected:
 		return
 	input_busy = true
 	var ticket := generation
-	var result: Dictionary = await request_json("/api/input", {"x": direction.x, "y": direction.y, "angle": angle, "worldId": world_id}, true)
+	var body := pending_input
+	pending_input = {}
+	var result: Dictionary = await request_json("/api/input", body, true)
+	if ticket != generation:
+		return
 	input_busy = false
-	if ticket == generation and result.get("_status", 0) == 401:
+	if result.get("_status", 0) == 401:
 		fail_stream("La sesión terminó.")
+		return
+	if result.get("_status",0) == 429 and pending_input.is_empty():
+		pending_input = body
+	# Keep only the newest intention, including stop, while HTTP is in flight.
+	if not pending_input.is_empty():
+		input_busy = true
+		await get_tree().create_timer(0.025).timeout
+		if ticket == generation:
+			input_busy = false
+			flush_input()
 
 func act(kind: String, extra: Dictionary = {}) -> void:
 	if not connected or action_queue.size() >= 8:
@@ -206,7 +276,12 @@ func flush_actions() -> void:
 	action_busy = true
 	var ticket := generation
 	var result: Dictionary = await request_json("/api/action", action_queue.pop_front(), true)
+	if ticket != generation:
+		return
 	action_busy = false
+	if result.get("_status",0) == 401:
+		fail_stream("La sesión terminó.")
+		return
 	if ticket == generation:
 		if result.has("error"):
 			status_changed.emit(str(result.error))

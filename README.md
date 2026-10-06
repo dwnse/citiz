@@ -1,5 +1,38 @@
 # El Cerco
 
+## Arte 021 — Fase 1: personajes con esqueleto
+
+Agente y zombi común sustituidos por modelos GLB animados de Quaternius (CC0).
+Apuntado estable, piernas independientes del disparo, recarga, daño, muerte y
+reaparición conectados al servidor. Implementado en ambas carpetas Godot;
+119 pruebas del servidor y verificaciones nativas aprobadas.
+[Antes/después, clip, licencias, archivos y límites](docs/ARTE_FASE_1.md).
+La fase 2 de arte —resistente, bóveda y tres piezas de base— espera aprobación.
+
+## Actualización 0.20 — Equilibrio
+
+Más preparación entre oleadas, progresión sin reinicio al nivel fácil, botín más limitado y mejoras de extracción efectivas. Comunidad muestra el balance teórico de raciones y el HUD anticipa la oleada. 118 pruebas aprobadas en esa entrega y auditoría reproducible. [Valores, controles y límites](docs/EQUILIBRIO_020.md).
+
+## Actualización 0.19 — Mundo y campaña
+
+Hospitales y laboratorios con salas recorribles: activar la entrada, despejar infectados, asegurar el objetivo y recuperar el informe. Amenaza ligada a las fases del mes, progreso persistente e indicaciones en HUD/diario. Los lugares ocupados conservan su funcionamiento anterior cuando añadir un interior causaría conflictos. [Controles y límites](docs/MUNDO_CAMPANA_019.md). Fase 4 pendiente de confirmación.
+
+## Actualización 0.18 — Gestión RTS
+
+**O / Comunidad** permite elegir un residente y ordenar Mover, Detener, Al refugio o Trabajo automático. Separación al caminar, rutas renovadas ante bloqueos y conservación de carga. 108 pruebas aprobadas e integración Godot en ambas carpetas. [Controles, reglas y límites](docs/RTS_018.md). Fase 3 pendiente de confirmación.
+
+## Actualización 0.17 — Estabilidad y controles
+
+Reconexión automática limitada, aviso de perfil abierto en otra conexión, parada conservada durante peticiones en curso y bloqueo de controles al perder el foco. Distribución más uniforme de envíos y reutilización de datos de edificios por lote. [Cambios, validación y límites](docs/ESTABILIDAD_017.md). La fase de gestión RTS queda pendiente de confirmación.
+
+## Actualización 0.16
+
+Godot recibe cambios incrementales en lugar de estados completos repetidos. Se conservan reconexión, visibilidad de rivales y clientes anteriores. Detalles y mediciones: [RED_INCREMENTAL_016.md](docs/RED_INCREMENTAL_016.md).
+
+## Actualización 0.15
+
+Dos galerías recorribles, gas, válvulas de ventilación y armarios de suministros compartidos. 96 pruebas aprobadas. Ver [COLECTORES_015.md](docs/COLECTORES_015.md) para controles, compatibilidad, archivos y pendientes.
+
 ## Actualización 0.14
 
 Trabajadores visibles con rutas y transporte, patios de expedición, señales de radio, colectores entre zonas y aspectos de cuenta. 91 pruebas aprobadas. Rendimiento gráfico mejorado mediante mallas compartidas por parte animada. Detalles, controles y límites: [MUNDO_VIVO_014.md](docs/MUNDO_VIVO_014.md). Reinicia el servidor con `node tools/start-godot.mjs` y vuelve a abrir Godot.

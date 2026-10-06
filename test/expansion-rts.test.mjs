@@ -19,8 +19,8 @@ test('torreta necesita energía y munición, respeta paredes, consume munición 
 });
 test('botín de zombis abastece mochila, consumo cobra una vez y cocina requiere ingredientes',()=>{
  const {w,p}=setup();w.drops=[];
- for(const id of ['a','b','c','d'])zombieLoot(w,{id,x:p.x,y:p.y});
- assert.ok(w.drops.every(d=>d.wood===0));for(let i=0;i<4;i++)assert.ok(act(w,p,'interact'));
+ for(const id of 'abcdefghijklmnop')zombieLoot(w,{id,x:p.x,y:p.y});
+ assert.ok(w.drops.every(d=>d.wood===0));for(let i=0;i<16;i++)assert.ok(act(w,p,'interact'));
  assert.equal(p.food,2);assert.equal(p.water,2);assert.equal(p.medical,1);
  p.hunger=10;act(w,p,'consume',{item:'food'});assert.equal(p.hunger,45);assert.equal(p.food,1);
  p.thirst=10;act(w,p,'consume',{item:'water'});assert.equal(p.thirst,50);assert.equal(p.water,1);

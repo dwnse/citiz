@@ -1,0 +1,21 @@
+{
+  "date": "2026-10-05T20:31:30.449Z",
+  "node": "v24.19.0",
+  "platform": "win32",
+  "scenario": "40 HTTP/SSE clients, AI horde, 32 residents, durable synthetic bases and players; two minutes, loopback, no graphics",
+  "reports": [
+    {
+      "clients": 40,
+      "zombies": 96,
+      "workers": 32,
+      "buildings": 36,
+      "delivered": 54,
+      "seconds": 137.09,
+      "ticksPerSecond": 30,
+      "sampledTickP95ms": 23.57,
+      "inputP95ms": 56.1,
+      "receivedKiBPerSecond": 15818.5,
+      "errors": 0
+    }
+  ]
+}

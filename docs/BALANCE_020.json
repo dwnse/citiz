@@ -1,0 +1,227 @@
+{
+  "version": "0.20",
+  "method": "Deterministic theoretical audit; normal horde enemies, no bosses, no movement, armor, AI, network or human playtest",
+  "waves": {
+    "firstSeconds": 90,
+    "daySeconds": 60,
+    "nightSeconds": 45,
+    "levels": [
+      1,
+      1,
+      1,
+      2,
+      2,
+      2,
+      3,
+      3,
+      3,
+      3,
+      3,
+      3
+    ]
+  },
+  "loot": {
+    "averageAmmo": 1.5,
+    "previousAverageAmmo": 9,
+    "foodPer16": 2,
+    "waterPer16": 2,
+    "medicalPer16": 1
+  },
+  "combat": [
+    {
+      "weapon": "pistol",
+      "level": 1,
+      "accuracy": 1,
+      "hp": 68,
+      "expectedSpent": 2,
+      "averageLoot": 1.5,
+      "netAmmo": -0.5
+    },
+    {
+      "weapon": "pistol",
+      "level": 1,
+      "accuracy": 0.7,
+      "hp": 68,
+      "expectedSpent": 2.86,
+      "averageLoot": 1.5,
+      "netAmmo": -1.36
+    },
+    {
+      "weapon": "pistol",
+      "level": 2,
+      "accuracy": 1,
+      "hp": 102,
+      "expectedSpent": 3,
+      "averageLoot": 1.5,
+      "netAmmo": -1.5
+    },
+    {
+      "weapon": "pistol",
+      "level": 2,
+      "accuracy": 0.7,
+      "hp": 102,
+      "expectedSpent": 4.29,
+      "averageLoot": 1.5,
+      "netAmmo": -2.79
+    },
+    {
+      "weapon": "pistol",
+      "level": 3,
+      "accuracy": 1,
+      "hp": 136,
+      "expectedSpent": 4,
+      "averageLoot": 1.5,
+      "netAmmo": -2.5
+    },
+    {
+      "weapon": "pistol",
+      "level": 3,
+      "accuracy": 0.7,
+      "hp": 136,
+      "expectedSpent": 5.71,
+      "averageLoot": 1.5,
+      "netAmmo": -4.21
+    },
+    {
+      "weapon": "shotgun",
+      "level": 1,
+      "accuracy": 1,
+      "hp": 68,
+      "expectedSpent": 1,
+      "averageLoot": 1.5,
+      "netAmmo": 0.5
+    },
+    {
+      "weapon": "shotgun",
+      "level": 1,
+      "accuracy": 0.7,
+      "hp": 68,
+      "expectedSpent": 1.43,
+      "averageLoot": 1.5,
+      "netAmmo": 0.07
+    },
+    {
+      "weapon": "shotgun",
+      "level": 2,
+      "accuracy": 1,
+      "hp": 102,
+      "expectedSpent": 2,
+      "averageLoot": 1.5,
+      "netAmmo": -0.5
+    },
+    {
+      "weapon": "shotgun",
+      "level": 2,
+      "accuracy": 0.7,
+      "hp": 102,
+      "expectedSpent": 2.86,
+      "averageLoot": 1.5,
+      "netAmmo": -1.36
+    },
+    {
+      "weapon": "shotgun",
+      "level": 3,
+      "accuracy": 1,
+      "hp": 136,
+      "expectedSpent": 2,
+      "averageLoot": 1.5,
+      "netAmmo": -0.5
+    },
+    {
+      "weapon": "shotgun",
+      "level": 3,
+      "accuracy": 0.7,
+      "hp": 136,
+      "expectedSpent": 2.86,
+      "averageLoot": 1.5,
+      "netAmmo": -1.36
+    },
+    {
+      "weapon": "rifle",
+      "level": 1,
+      "accuracy": 1,
+      "hp": 68,
+      "expectedSpent": 2,
+      "averageLoot": 1.5,
+      "netAmmo": -0.5
+    },
+    {
+      "weapon": "rifle",
+      "level": 1,
+      "accuracy": 0.7,
+      "hp": 68,
+      "expectedSpent": 2.86,
+      "averageLoot": 1.5,
+      "netAmmo": -1.36
+    },
+    {
+      "weapon": "rifle",
+      "level": 2,
+      "accuracy": 1,
+      "hp": 102,
+      "expectedSpent": 3,
+      "averageLoot": 1.5,
+      "netAmmo": -1.5
+    },
+    {
+      "weapon": "rifle",
+      "level": 2,
+      "accuracy": 0.7,
+      "hp": 102,
+      "expectedSpent": 4.29,
+      "averageLoot": 1.5,
+      "netAmmo": -2.79
+    },
+    {
+      "weapon": "rifle",
+      "level": 3,
+      "accuracy": 1,
+      "hp": 136,
+      "expectedSpent": 4,
+      "averageLoot": 1.5,
+      "netAmmo": -2.5
+    },
+    {
+      "weapon": "rifle",
+      "level": 3,
+      "accuracy": 0.7,
+      "hp": 136,
+      "expectedSpent": 5.71,
+      "averageLoot": 1.5,
+      "netAmmo": -4.21
+    }
+  ],
+  "survival": {
+    "minutesFromFullWithoutSupplies": {
+      "food": 41.666666666666664,
+      "water": 23.809523809523807
+    },
+    "twoResidentsGardenAndNearbyWell": {
+      "demand": 1,
+      "foodPerMinute": 1.25,
+      "waterPerMinute": 2,
+      "foodBalance": 0.25,
+      "waterBalance": 1
+    }
+  },
+  "workers": [
+    {
+      "level": 0,
+      "extractSeconds": 20,
+      "woodPerHitAtTech0": 6,
+      "woodPerHitAtTech3": 9
+    },
+    {
+      "level": 1,
+      "extractSeconds": 16,
+      "woodPerHitAtTech0": 6,
+      "woodPerHitAtTech3": 9
+    },
+    {
+      "level": 2,
+      "extractSeconds": 12,
+      "woodPerHitAtTech0": 6,
+      "woodPerHitAtTech3": 9
+    }
+  ]
+}

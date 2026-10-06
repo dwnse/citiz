@@ -418,6 +418,8 @@ func show_state(w: Dictionary, p: Dictionary, building: bool) -> void:
 	stats.text += "\n  Alimento %d · Agua %d%s" % [p.get("hunger",100),p.get("thirst",100)," · RECARGANDO %.1f s" % p.reload if p.reload>0 else ""]
 	stats.text=stats.text.replace("Pistola",w.get("adventure",{}).get("weapon",{}).get("name","Pistola"))
 	stats.text += "\n  Mochila: H comida %d · Y agua %d · N botiquín %d" % [p.get("food",0),p.get("water",0),p.get("medical",0)]
+	var threat: Dictionary = w.get("adventure",{}).get("threat",{})
+	if not threat.is_empty(): stats.text+="\n  Oleada prevista: %d s · Amenaza %d/3" % [threat.seconds,threat.level]
 	if p.get("equipped","weapon")=="tool":
 		stats.text=stats.text.replace("PISTOLA","HACHA-PICO")
 		objective.text="Apunta al tronco o roca · Mantén clic · Alcance 3,2 m"
@@ -471,7 +473,12 @@ func show_state(w: Dictionary, p: Dictionary, building: bool) -> void:
 	var adventure: Dictionary = w.get("adventure",{})
 	text+="\n\nEXPEDICIONES · Señales turquesas del mapa\nHospital: comida y botiquines · Estación: agua y chatarra\nLaboratorio: componentes para nuevas armas. E registra la zona.\nEntrega cada informe con E en tu bóveda: investigación +1.\nFabricación de armas: acércate a un taller; el cambio devuelve las balas.\n"
 	text+="Informes entregados: %d\nRefugios: 2 plazas cada uno. Hospitales rescatan trabajadores.\nAserraderos/canteras necesitan trabajador y recurso vivo a 10 m.\nLaboratorio: mejora extracción y torretas; sintetiza la cura.\nVictoria: una comunidad viva + sus seis claves + su derrota del Paciente 0.\nAntes de 30 días reales; las monedas de cuenta solo son cosméticas.\n" % p.get("expeditions",0)
-	for site in adventure.get("sites",[]): text+="%s (%d, %d)\n" % [site.name,site.x,site.y]
+	text+="\nSUMINISTROS Y AMENAZA\nZombis comunes: 1–2 balas; comida, agua y botiquines ocasionales.\nC fabrica munición; un taller mejora el rendimiento.\nPuestos mejorados: extraen en 16/12 s; investigar aumenta su carga.\nOleadas: 60 s de día y 45 s de noche; niveles 1, 2 y 3 cada tres oleadas.\nLa primera oleada de una partida nueva llega a los 90 s.\n"
+	for site in adventure.get("sites",[]):
+		text+="%s (%d, %d)\n" % [site.name,site.x,site.y]
+		if site.get("encounter") is Dictionary: text+=str(site.get("hint",""))+"\n"
+	text+="\nINTERIORES: radio/energía amarilla → sala del objetivo turquesa.\nElimina la amenaza y permanece junto al paciente o archivo; después E recoge el informe.\nDispones de 180 s de tiempo jugado. La dificultad cambia con la fase del mes.\n"
+	for entry in adventure.get("expeditionHistory",[]): text+="Completado: %s · %s\n" % [entry.title,entry.phase]
 	var population: Dictionary = w.get("population",{})
 	text+="\nPOBLACIÓN: %d / %d plazas · %d trabajando\nReservas donadas: %d comida, %d agua · Alimentados: %d s\nConsumo cada minuto: %d comida y agua (también usa huertos y pozos).\n" % [population.get("residents",0),population.get("capacity",0),population.get("working",0),population.get("food",0),population.get("water",0),population.get("fedSeconds",0),population.get("rationCost",0)]
 	for job in population.get("jobs",[]): text+="%s (%d,%d): %s · reserva %d/60\n" % ["Aserradero" if job.kind=="sawmill" else "Cantera",job.x,job.y,"Trabajando" if job.working else job.reason,job.stock]
@@ -482,7 +489,7 @@ func show_state(w: Dictionary, p: Dictionary, building: bool) -> void:
 			last_incident=str(w.id)+str(event.id)
 			notify_action("Radio: "+str(event.title)+" · señal dorada del mapa · J para detalles",true)
 		text+="\nSEÑAL DE RADIO: %s · %d s\n%s\nDestino (%d,%d) · E para recuperar: %s\n" % [event.title,maxi(0,int(event.endsAt-adventure.elapsed)),event.description,event.x,event.y,event.reward]
-	text+="\nCOLECTORES: accesos violetas cerca del cruce central. E cruza al otro lado; cuesta 25 resistencia, espera de 15 s y ruido durante 20 s.\n"
+	text+="\nCOLECTORES: accesos violetas cerca del cruce central. E baja a una galería por 25 resistencia. Recorre el interior, abre la válvula y registra el armario. E en la otra escalera sale gratis; espera entre accesos: 3 s.\n"
 	journal_text.text = text
 	if p.get("intro",false) and p.alive:
 		var guide: Dictionary = adventure.get("guide",{})
@@ -498,8 +505,9 @@ func show_state(w: Dictionary, p: Dictionary, building: bool) -> void:
 	for site in adventure.get("sites",[]):
 		if Vector2(site.x-p.x,site.y-p.y).length()<=4:
 			objective.text="E · Registrar "+str(site.name)+" · Entrega después el informe en tu bóveda"
+			if site.has("interior"): objective.text=str(site.get("hint",""))
 	for passage in adventure.get("passages",[]):
-		if Vector2(passage.x-p.x,passage.y-p.y).length()<=3: objective.text="E · Cruzar "+str(passage.name)+" · 25 resistencia · El ruido atrae infectados"
+		if Vector2(passage.x-p.x,passage.y-p.y).length()<=3: objective.text="E · Cruzar "+str(passage.name)+" · %d resistencia" % passage.get("cost",25)
 	if p.get("sample",false): objective.text="MUESTRA DEL ORIGEN · E en tu laboratorio: sintetizar cura (6 claves + 3 informes)"
 	if adventure.get("paused",false): objective.text="PARTIDA PAUSADA · P para continuar"
 	status.text="Día %d · %s · Cambio en %d s · Energía %d" % [adventure.get("day",1),("Noche" if adventure.get("night",false) else "Día")+(" / Lluvia" if adventure.get("weather","")=="rain" else ""),adventure.get("nextPhase",360),p.get("stamina",100)]
@@ -507,3 +515,10 @@ func show_state(w: Dictionary, p: Dictionary, building: bool) -> void:
 	if not w.has("resources"):
 		status.text="Servidor antiguo: ciérralo con Ctrl+C y ejecuta node tools/start-godot.mjs para cargar árboles y rocas."
 	if p.get("equipped","weapon")=="tool" and p.alive and w.phase=="active" and not adventure.get("paused",false): objective.text="Q: arma · Clic en árbol o roca a menos de 3,2 m"
+
+	for room in adventure.get("collectors",[]):
+		if absf(room.x-p.x)<12 and absf(room.y-p.y)<5.5 and p.alive and w.phase=="active" and not adventure.get("paused",false):
+			var safe: bool = room.get("purgedUntil",0)>Time.get_unix_time_from_system()*1000
+			objective.text="GALERÍA · Gas: abre la válvula azul con E; consume resistencia y luego salud" if not safe else "GALERÍA VENTILADA · E en el armario recoge suministros · Busca la otra escalera"
+			for passage in adventure.get("passages",[]):
+				if passage.get("interior",false) and Vector2(passage.x-p.x,passage.y-p.y).length()<=3: objective.text="E · Salir de la galería · Sin coste de resistencia"

@@ -28,8 +28,8 @@ test('almacenar, desmontar y recoger no convierte recursos en recuperados',()=>{
  assert.ok(act(w,p,'dismantle',{id:b.id}));const d=w.drops.find(d=>d.materials);collectLoot(w,p,d);
  assert.equal(p.materials.stone,20);assert.equal(p.materials.reclaimed,17);assert.equal(p.wood,37);
 });
-test('expediciones tienen espera compartida; hospital requiere alojamiento; informe se entrega una vez',()=>{
- const {w,p,c}=setup(),site=initializeAdventure(w).sites[0];p.x=site.x;p.y=site.y;
+test('expediciones sin interior conservan espera compartida, alojamiento e informe único',()=>{
+ const {w,p,c}=setup(),site=initializeAdventure(w).sites[0];delete site.interior; /* Existing courtyard without interior. */ p.x=site.x;p.y=site.y;
  assert.ok(act(w,p,'expedition'));assert.equal(p.medical,2);assert.equal(act(w,p,'expedition'),false);
  p.x=c.x-4;p.y=c.y;assert.equal(act(w,p,'deliver'),false);assert.ok(p.cargo);
  building(w,p,'shelter');assert.ok(act(w,p,'deliver'));assert.equal(c.research,1);assert.equal(c.settlers,1);

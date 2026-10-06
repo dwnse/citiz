@@ -1,0 +1,120 @@
+Godot Engine v4.5.1.stable.official.f62fdbde1 - https://godotengine.org
+
+PASS native patches remove fields without mutating previous state
+PASS native decoder rejects missing or repeated sequence
+CLIENT Conectando…
+CLIENT Conectado · Partida guardada automáticamente
+PASS two native clients share a world
+PASS three authoritative infected
+PASS main scene creates players and infected meshes
+PASS resource model created: native-tree
+PASS resource geometry visible: native-tree
+PASS resource model created: native-rock
+PASS resource geometry visible: native-rock
+PASS local living character is visible after entry
+PASS camera centers on local character on entry
+PASS guided construction finds a valid plot
+PASS finished worlds cannot enter as invisible dead characters
+PASS active world enables entry
+PASS mouse projection returns the ground aim point
+PASS physical WASD mapping installed
+PASS movement visible to second client
+PASS construction synchronized
+PASS server charges one wall
+PASS duplicate sequence rejected
+PASS pistol spends authoritative ammunition
+PASS damage visible to second client
+PASS reload completes on authority
+PASS repeat shot 0
+PASS repeat reload 0
+PASS repeat shot 1
+PASS repeat reload 1
+PASS repeat shot 2
+PASS repeat reload 2
+PASS eighteen structure definitions received
+PASS snapped gate synchronized
+PASS water production structure synchronized
+PASS connected row synchronized through native client
+PASS structure upgrade synchronized
+PASS tool equipment shared between clients
+PASS hatchet replaces pistol in character hands
+PASS native harvest grants materials and synchronizes tree depletion
+PASS switch back to pistol
+PASS management inspector reflects authoritative upgrade
+PASS row placement renders ghost pieces
+PASS leaving build mode cancels row preview
+PASS expedition sites synchronized
+PASS explorable hospital and objective hint synchronized
+PASS interior marks its entry interaction
+PASS active encounter reveals the inner objective
+PASS typed wood reaches native client
+PASS construction categories filter without changing hotkeys
+PASS new building has visible geometry: shelter
+PASS new building has visible geometry: sawmill
+PASS new building has visible geometry: quarry
+PASS new building has visible geometry: laboratory
+PASS boss label explains interruptible ability
+PASS horde buff has a visible marker
+PASS resident renders cargo and status without gun
+PASS expedition courtyard has recognizable marker
+PASS account cosmetic equips through authenticated server
+PASS shop explains equipped style and disables unaffordable purchases
+PASS native client reconstructs incremental snapshots
+PASS two galleries and their inner exits synchronized
+PASS gas and ventilation prompt visible
+PASS ventilated gallery reveals supply prompt
+PASS community screen displays workers and rations
+PASS community screen blocks movement intentions
+PASS community rows update without leaving stale jobs
+PASS audio and video settings loaded
+PASS community panel lists individual residents
+PASS community panel explains food and water balance
+PASS HUD displays authoritative wave forecast
+PASS individual hold order reaches authoritative server
+PASS move order opens ground selection
+PASS escape cancels resident destination selection
+PASS resident returns to automatic work
+PASS losing application focus blocks gameplay
+PASS latest stop intention drains after in-flight movement
+PASS authoritative player remains stopped
+PASS dodge synchronized
+PASS sprint enabled before connection loss
+PASS disconnect removes presence
+CLIENT Conectando…
+CLIENT Conectado · Partida guardada automáticamente
+PASS reconnect receives snapshots
+PASS reconnect preserves identity and faction
+PASS reconnect preserves materials
+PASS reconnect preserves construction
+PASS reconnection does not retain a held sprint key
+CLIENT Conexión perdida · Reintentando en 1 s (1/5). Tus acciones pendientes se cancelaron.
+PASS broken stream schedules automatic recovery
+CLIENT Conectando…
+CLIENT Conectado · Partida guardada automáticamente
+PASS automatic recovery restores snapshots
+PASS automatic recovery preserves identity and buildings
+CLIENT Conexión perdida · Reintentando en 1 s (1/5). Tus acciones pendientes se cancelaron.
+PASS explicit leave cancels scheduled recovery
+CLIENT Conectando…
+CLIENT Conectado · Partida guardada automáticamente
+PASS manual entry remains available after cancelling recovery
+CLIENT Este perfil se abrió en otra conexión. Usa un perfil distinto para jugar con otra persona.
+PASS same identity can be opened by a replacement connection
+PASS replaced session stops instead of fighting the new connection
+CLIENT Conectando…
+CLIENT Conectado · Partida guardada automáticamente
+PASS explicit reconnect can reclaim the profile
+CLIENT Conexión perdida · Reintentando en 1 s (1/5). Tus acciones pendientes se cancelaron.
+CLIENT Conexión perdida · Reintentando en 2 s (2/5). Tus acciones pendientes se cancelaron.
+CLIENT Conexión perdida · Reintentando en 4 s (3/5). Tus acciones pendientes se cancelaron.
+CLIENT Conexión perdida · Reintentando en 8 s (4/5). Tus acciones pendientes se cancelaron.
+CLIENT Conexión perdida · Reintentando en 8 s (5/5). Tus acciones pendientes se cancelaron.
+CLIENT Test retry limit No se pudo recuperar la conexión. Pulsa Reconectar o vuelve a la sala.
+PASS automatic recovery has a five-attempt limit
+CLIENT Conectando…
+CLIENT Conectado · Partida guardada automáticamente
+PASS manual entry works after retry exhaustion
+PASS infected pursues and damages native player
+PASS finished reconnect returns to lobby with explanation
+NATIVE_SMOKE failures=0
+PASS native world saved and read back: 2 identities, 5 structures, upgrade

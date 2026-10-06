@@ -9,6 +9,7 @@ if(!engine)throw Error('Uso: node tools/verify-godot.mjs RUTA_GODOT [--capture]'
 const directory=mkdtempSync(join(tmpdir(),'cerco-native-'));
 const app=createServer({directory});
 const w=app.world;
+w.communities[0].settlers=1;
 w.resources=[{id:'native-tree',kind:'tree',x:43,y:63,hits:5,maxHits:5,readyAt:0},{id:'native-rock',kind:'rock',x:39,y:63,hits:5,maxHits:5,readyAt:0}];
 w.zombies=[[65,64],[67,69],[64,72]].map(([x,y],i)=>({id:'native-z'+i,x,y,hp:68,maxHp:68,level:1,attack:0,boss:false,communityId:'forest'}));
 const capture=process.argv.includes('--capture');

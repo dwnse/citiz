@@ -1,8 +1,10 @@
 import {passages,travel} from './passages.mjs';
 import {incidentTick,claimIncident} from './incidents.mjs';
 import {initializeLandmarks} from './landmarks.mjs';
+import {initializeInteriors,expeditionGate,expeditionsTick,campaignStage,encounterHint} from './expeditions.mjs';
 import {clearSight} from './story.mjs';
 import {addMaterials,inventory} from './inventory.mjs';
+import {nextWaveLevel} from './balance.mjs';
 export function initializeAdventure(w){
   w.adventure??={elapsed:0,weather:'clear',events:[],sites:w.communities.flatMap(c=>[
     {id:c.id+'-hospital',kind:'hospital',name:'Hospital de campaña',x:c.x-29,y:c.y+29},
@@ -10,6 +12,7 @@ export function initializeAdventure(w){
     {id:c.id+'-laboratory',kind:'laboratory',name:'Laboratorio Umbral',x:c.x-31,y:c.y-30}
   ]).filter(s=>s.x>5&&s.y>5&&s.x<w.size-5&&s.y<w.size-5)};
   initializeLandmarks(w,w.adventure);
+  initializeInteriors(w,w.adventure);
   return w.adventure;
 }
 export function guide(w,p){
@@ -37,9 +40,11 @@ export function adventureAction(w,p,msg,now,online){
     if(!clearSight(w,p,site))return fail('Rodea el obstáculo para llegar a la señal de expedición.');
     const incident=claimIncident(w,p,site);
     if(incident){p.noiseUntil=now+20000;p.actionMessage=incident.title+': '+incident.reward+'. El ruido atrae infectados.';return true;}
+    const gate=expeditionGate(w,p,site,now);if(gate!==null)return gate;
     if((site.readyAt||0)>now)return fail(`Zona registrada. Vuelve en ${Math.ceil((site.readyAt-now)/1000)} s.`);
     if(p.cargo)return fail('Entrega primero el informe que llevas en tu bóveda.');
     site.readyAt=now+180000;
+    if(site.encounter){a.expeditionHistory??=[];a.expeditionHistory.push({site:site.name,title:site.encounter.title,phase:site.encounter.phase,communityId:p.communityId});a.expeditionHistory=a.expeditionHistory.slice(-8);site.encounter=null;}
     if(site.kind==='hospital'){p.medical=(p.medical||0)+2;p.food=(p.food||0)+2;}
     if(site.kind==='station'){p.water=(p.water||0)+3;addMaterials(p,'scrap',20);}
     if(site.kind==='laboratory'){addMaterials(p,'components',3);p.reserve+=18;}
@@ -73,6 +78,7 @@ export function adventureTick(w,online,dt,now,inputs){
   const a=initializeAdventure(w);if(!online.size)return;
   a.elapsed+=dt;a.night=(a.elapsed%600)>=360;a.weather=Math.floor(a.elapsed/180)%3===1?'rain':'clear';
   incidentTick(w,online);
+  expeditionsTick(w,online,dt);
   for(const p of Object.values(w.players)){
     if(!p.alive||!online.has(p.id))continue;
     const input=inputs.get(p.id);
@@ -84,15 +90,16 @@ export function adventureTick(w,online,dt,now,inputs){
 }
 export function adventureView(w,p,now){
   const a=initializeAdventure(w);
-  const campaignDay=1+Math.floor((now-w.startedAt)/86400000),campaignPhase=campaignDay<=3?'Llegada':campaignDay<=10?'Exploración':campaignDay<=20?'Guerra':campaignDay<=27?'Asedio final':'El sello cede';
-  return {...a,passages:passages(w),campaignDay,campaignPhase,guide:guide(w,p),weapon:weapon(p),weapons:WEAPONS,paused:!!w.pausedBy,day:1+Math.floor(a.elapsed/600),nextPhase:Math.ceil((a.night?600:360)-a.elapsed%600)};
+  const phase=campaignStage(w,now),campaignDay=phase.day,campaignPhase=phase.name;
+  const threat={seconds:Math.max(0,Math.ceil((w.nextWave-now)/1000)),level:Math.max(['city','underground'].includes(p.communityId)?2:1,nextWaveLevel(w.wave))};
+  return {...a,threat,sites:a.sites.map(s=>s.interior?{...s,hint:(s.readyAt||0)>now?`Zona registrada. Vuelve en ${Math.ceil((s.readyAt-now)/1000)} s.`:encounterHint(s,a.elapsed)}:s),passages:passages(w),collectors:w.collectors?.rooms||[],campaignDay,campaignPhase,guide:guide(w,p),weapon:weapon(p),weapons:WEAPONS,paused:!!w.pausedBy,day:1+Math.floor(a.elapsed/600),nextPhase:Math.ceil((a.night?600:360)-a.elapsed%600)};
 }
 
 // Shift absolute gameplay deadlines by real paused time; relative timers stay frozen.
 export function freezePause(w,now){
   if(!w.pausedBy)return;
   const delta=Math.max(0,now-(w.pauseAt??now));w.pauseAt=now;
-  const dates=new Set(['travelAfter','nextWave','readyAt','producedAt','fuelUntil','attackAfter','closeAt','toggleAfter','recycleAfter','scavengeAfter','respawn','raidAfter','dodgeUntil','dodgeAfter','noiseUntil','fedUntil','interruptedUntil','rallyUntil','diedAt','charmUntil','moveAt','until']);
+  const dates=new Set(['purgedUntil','travelAfter','nextWave','readyAt','producedAt','fuelUntil','attackAfter','closeAt','toggleAfter','recycleAfter','scavengeAfter','respawn','raidAfter','dodgeUntil','dodgeAfter','noiseUntil','fedUntil','interruptedUntil','rallyUntil','diedAt','charmUntil','moveAt','until']);
   function shift(object,parent=''){
     if(!object||typeof object!=='object')return;
     for(const [key,value] of Object.entries(object)){

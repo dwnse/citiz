@@ -1,3 +1,4 @@
+import {workerSeconds,workerYield} from './balance.mjs';
 import {workersTick} from './workers.mjs';
 import {prepareWorkforce,workforce} from './population.mjs';
 import {addMaterials,inventory,recipe,materialPlan,payRecipe,transferMaterials} from './inventory.mjs';
@@ -7,8 +8,8 @@ import {damageInfected} from './loot.mjs';
 
 export const STRUCTURES = Object.freeze({
   shelter:{name:'Refugio',cost:45,hp:300,width:3.2,depth:3.2,height:2.5,description:'Aloja dos rescatados del hospital. Cada trabajador ocupa un aserradero o cantera.'},
-  sawmill:{name:'Aserradero',cost:60,hp:220,width:3.2,depth:3.2,height:1.8,description:'Un trabajador y un árbol vivo a 10 m: Extrae 6 madera en 20 s y la transporta al puesto. E recoge; capacidad 60.'},
-  quarry:{name:'Cantera',cost:60,hp:300,width:3.2,depth:3.2,height:1.5,description:'Un trabajador y una roca viva a 10 m: Extrae 8 piedra en 20 s y la transporta al puesto. E recoge; capacidad 60.'},
+  sawmill:{name:'Aserradero',cost:60,hp:220,width:3.2,depth:3.2,height:1.8,description:'Un trabajador y un árbol vivo a 10 m: Extrae 6 madera en 20 s y la transporta. Mejoras: 16/12 s; investigación: +1 por nivel. E recoge; capacidad 60.'},
+  quarry:{name:'Cantera',cost:60,hp:300,width:3.2,depth:3.2,height:1.5,description:'Un trabajador y una roca viva a 10 m: Extrae 8 piedra en 20 s y la transporta. Mejoras: 16/12 s; investigación: +1 por nivel. E recoge; capacidad 60.'},
   laboratory:{name:'Laboratorio del Sello',cost:100,hp:300,width:3.2,depth:3.2,height:2.2,description:'E investiga: 2 informes, 2 componentes y 20 materiales. Tres niveles: +1 recurso por golpe y +4 daño de torreta. Con muestra, 6 claves y 3 informes sintetiza la cura.'},
   turret:{name:'Torreta',cost:80,hp:220,width:2.4,depth:2.4,height:2.2,description:'Dispara a infectados a 14 m. Necesita generador a 8 m y munición. E: cargar hasta 30 balas.'},
   generator:{name:'Generador',cost:70,hp:280,width:2.4,depth:2.4,height:1.4,description:'E: 20 materiales para 90 s de energía a 8 m. Alimenta torretas y recicladores.'},
@@ -25,7 +26,8 @@ export const STRUCTURES = Object.freeze({
   garden:{name:'Huerto',cost:45,hp:160,width:3.2,depth:3.2,height:.4,description:'Produce comida cada 60 s, hasta 5 usos. E: +35 alimento.'},
   storage:{name:'Almacén',cost:35,hp:280,width:3.2,depth:3.2,height:1.5,description:'Depósito aliado de materiales y balas. T guarda materiales; E retira. Clic derecho: munición.'}
 });
-export const catalog = () => ['wall','gate','spikes','workshop','infirmary','well','garden','storage','turret','generator','recycler','kitchen','raincollector','sandbag','shelter','sawmill','quarry','laboratory'].map(id=>({id,...STRUCTURES[id],recipe:recipe(STRUCTURES[id].cost,id)}));
+const BUILDING_CATALOG = ['wall','gate','spikes','workshop','infirmary','well','garden','storage','turret','generator','recycler','kitchen','raincollector','sandbag','shelter','sawmill','quarry','laboratory'].map(id=>({id,...STRUCTURES[id],recipe:recipe(STRUCTURES[id].cost,id)}));
+export const catalog = () => BUILDING_CATALOG;
 export const definition = b => Object.hasOwn(STRUCTURES,b.kind||'wall')?STRUCTURES[b.kind||'wall']:STRUCTURES.wall;
 export function bounds(b){const d=definition(b);return b.rot===1?{x:d.depth/2,y:d.width/2}:{x:d.width/2,y:d.depth/2};}
 export const isSolid = b => !(b.kind==='spikes'||b.kind==='gate'&&b.open);
@@ -82,6 +84,7 @@ export function structureStatus(w,b,now){
   let description=info[b.kind||'wall']||definition(b).description;
   if(['turret','recycler'].includes(b.kind))description+=powered(w,b,now)?' Energía: ACTIVA.':' Sin energía: activa un generador cercano.';
   if(['sawmill','quarry'].includes(b.kind))description+=` ${b.workerReason||'Esperando asignación.'} Reserva: ${b.stock||0}/60.`;
+  if(['sawmill','quarry'].includes(b.kind)){const c=w.communities.find(c=>c.id===b.communityId);description+=' Extracción actual: '+workerYield(b.kind==='sawmill'?'tree':'rock',c?.tech)+' materiales / '+workerSeconds(b.level)+' s + transporte.';}
   if(b.kind==='shelter'){const c=w.communities.find(c=>c.id===b.communityId);description+=` Rescatados: ${c?.settlers||0}. Plazas: ${w.walls.filter(q=>q.kind==='shelter'&&q.hp>0&&q.communityId===b.communityId).length*2}.`;}
   if(b.kind==='laboratory'){const c=w.communities.find(c=>c.id===b.communityId);description+=` Informes: ${c?.research||0}. Investigación: ${c?.tech||0}/3.`;}
   if(b.kind==='turret')description+=` Munición: ${b.ammoStock||0}/60.`;

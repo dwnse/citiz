@@ -8,12 +8,14 @@ export function initializeResources(w){
   for(const c of (w.legacy?[]:w.communities))for(const [i,dx,dy] of [[0,-32,-26],[1,30,25]]){
     const x=c.x+dx,y=c.y+dy,id=`${c.id}-outpost-${i}-ruin`;
     if(x<8||y<8||x>w.size-8||y>w.size-8||w.obstacles.some(o=>o.id===id))continue;
+    if(w.adventure?.sites.some(s=>s.interior&&Math.abs(s.x-x)<11&&Math.abs(s.y-y)<9))continue;
     if(w.walls.some(b=>contains(b,x,y,7))||w.resources.some(r=>Math.hypot(r.x-x,r.y-y)<8)||Object.values(w.players).some(p=>Math.hypot(p.x-x,p.y-y)<8))continue;
     w.obstacles.push({id,x,y,sx:4,sy:2});
   }
   for(const c of w.communities)for(let i=0;i<({forest:100,mountain:85,city:35,underground:55}[c.id]||45);i++){
     const angle=i*2.399963,range=21+(i%11)*2.8,x=Math.round((c.x+Math.cos(angle)*range)*5)/5,y=Math.round((c.y+Math.sin(angle)*range)*5)/5;
     if(x<3||y<3||x>w.size-3||y>w.size-3||Math.abs(x-50)<5||(!w.legacy&&(Math.abs(x-160)<5||Math.abs(y-105)<5)))continue;
+    if(w.adventure?.sites.some(s=>s.interior&&Math.abs(s.x-x)<7&&Math.abs(s.y-y)<9))continue;
     if((w.obstacles||[]).some(o=>Math.abs(x-o.x)<o.sx+2&&Math.abs(y-o.y)<o.sy+2)||w.walls.some(b=>contains(b,x,y,2)))continue;
     if(w.resources.some(r=>Math.hypot(r.x-x,r.y-y)<2.8))continue;
     const id=`${c.id}-resource-v2-${i}`;

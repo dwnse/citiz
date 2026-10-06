@@ -1,9 +1,35 @@
 import {findPath,solid} from './navigation.mjs';
 import {contains,isSolid} from './structures.mjs';
+import {workerSeconds,workerYield} from './balance.mjs';
 
 const runtime=new WeakMap();
 const distance=(a,b)=>Math.hypot(a.x-b.x,a.y-b.y);
 const names=['Inés','Bruno','Alma','Darío','Luz','Tomás','Vera','Simón'];
+export function workerOrder(w,p,msg){
+  const fail=message=>{p.buildError=message;return false;};
+  const npc=(w.workers||[]).find(q=>q.id===msg.id),c=w.communities.find(q=>q.id===p.communityId);
+  if(!npc||npc.communityId!==p.communityId)return fail('Selecciona un residente de tu comunidad.');
+  if(distance(p,c.vault)>24+(c.vault.upgrades||0)*6)return fail('Vuelve a tu base para dar órdenes a los residentes.');
+  if(!['move','hold','return','auto'].includes(msg.order))return fail('Orden de residente desconocida.');
+  if(msg.order==='move'&&(!Number.isFinite(msg.x)||!Number.isFinite(msg.y)||distance(msg,c.vault)>40+(c.vault.upgrades||0)*6||solid(w,msg.x,msg.y)))return fail('Elige suelo libre a menos de 40 m de tu bóveda (más su ampliación).');
+  npc.order=msg.order==='auto'?null:{type:msg.order,...(msg.order==='move'?{x:msg.x,y:msg.y}:{})};
+  npc.work=0;
+  if(!npc.cargo)npc.jobId=null;
+  runtime.get(w)?.routes.delete(npc.id);
+  p.actionMessage={move:'Destino indicado: al llegar permanecerá allí',hold:'Residente detenido; conserva la carga',return:'Regresará al refugio y esperará',auto:'Residente disponible para los puestos'}[msg.order];
+  return true;
+}
+
+function stepAside(w,npc,angle,step){
+  const nearby=w.workers.filter(q=>q!==npc&&distance(q,npc)<1.5);
+  for(const offset of [0,.65,-.65,1.25,-1.25]){
+    const point={x:npc.x+Math.cos(angle+offset)*step,y:npc.y+Math.sin(angle+offset)*step};
+    if(solid(w,point.x,point.y)||!clear(w,npc,point))continue;
+    if(nearby.some(q=>distance(q,point)<.85&&distance(q,point)<distance(q,npc)+.001))continue;
+    npc.x=point.x;npc.y=point.y;npc.angle=angle+offset;return true;
+  }
+  npc.status='Esperando paso: otro residente';return false;
+}
 function freePoint(w,home){
   for(let radius=3;radius<=9;radius++)for(let i=0;i<16;i++){
     const p={x:home.x+Math.cos(i*Math.PI/8)*radius,y:home.y+Math.sin(i*Math.PI/8)*radius};
@@ -29,6 +55,7 @@ function interactionClear(w,a,target){
 function walk(w,npc,target,reach,dt,nav){
   if(distance(npc,target)<=reach&&interactionClear(w,npc,target))return true;
   let route=nav.routes.get(npc.id);
+  if(route&&distance(route.target,target)>1){nav.routes.delete(npc.id);route=null;}
   const d=distance(npc,target),direct={x:target.x+(npc.x-target.x)*reach/d,y:target.y+(npc.y-target.y)*reach/d};
   let next=d>reach&&clear(w,npc,direct)&&interactionClear(w,direct,target)?direct:null;
   if(!next){
@@ -36,12 +63,13 @@ function walk(w,npc,target,reach,dt,nav){
       route={path:findPath(w,npc,target,reach,800,point=>interactionClear(w,point,target)),target:{...target},until:nav.time+2};nav.routes.set(npc.id,route);
     }
     while(route?.path.length&&distance(npc,route.path[0])<.2)route.path.shift();
+    // A nearby waypoint is only a guide; do not queue at a grid cell occupied by a peer.
+    while(route?.path.length>1&&distance(npc,route.path[0])<1.2&&clear(w,npc,route.path[1]))route.path.shift();
     next=route?.path[0];
-    if(!next||!clear(w,npc,next)){npc.status='Paso bloqueado: abre un portón';return false;}
+    if(!next||!clear(w,npc,next)){if(next)nav.routes.delete(npc.id);npc.status='Paso bloqueado: abre un portón';return false;}
   }
   const step=Math.min(distance(npc,next),2.8*Math.min(dt,.1)),angle=Math.atan2(next.y-npc.y,next.x-npc.x);
-  const point={x:npc.x+Math.cos(angle)*step,y:npc.y+Math.sin(angle)*step};
-  if(!solid(w,point.x,point.y)){npc.x=point.x;npc.y=point.y;npc.angle=angle;}
+  stepAside(w,npc,angle,step);
   return distance(npc,target)<=reach+.02&&interactionClear(w,npc,target);
 }
 
@@ -77,13 +105,22 @@ export function workersTick(w,assigned,online,dt,now){
     if(npc.cargo&&!job){
       w.drops.push({id:'cargo-'+npc.id+'-'+now,x:npc.x,y:npc.y,wood:npc.cargo.amount,materials:{[npc.cargo.kind]:npc.cargo.amount},ammo:0});npc.cargo=null;
     }
-    if(!npc.cargo&&(!job||!assigned.has(job.id))){
+    if(!npc.order&&!npc.cargo&&(!job||!assigned.has(job.id))){
       const previous=npc.jobId;npc.jobId=null;npc.work=0;
       job=w.walls.find(b=>b.communityId===c.id&&assigned.has(b.id)&&!taken.has(b.id));
       if(job){npc.jobId=job.id;taken.add(job.id);}
       if(previous!==npc.jobId)nav.routes.delete(npc.id);
     }
     const threatened=w.zombies.some(z=>z.hp>0&&!(z.charmUntil>now)&&distance(z,npc)<7);
+    if(npc.order&&!threatened){
+      if(npc.order.type==='hold'){npc.status='Esperando órdenes';continue;}
+      const target=npc.order.type==='return'?home:npc.order;
+      npc.status=npc.order.type==='return'?'Regresando por orden':'Moviéndose por orden';
+      if(walk(w,npc,target,npc.order.type==='return'?3:.65,dt,nav)){
+        npc.order={type:'hold'};npc.status='En destino: esperando órdenes';nav.routes.delete(npc.id);
+      }
+      continue;
+    }
     if(threatened||!job){npc.status=threatened?'En peligro: buscando refugio':'Regresando al refugio';if(walk(w,npc,home,3,dt,nav))npc.status=threatened?'Refugiado: despeja los infectados':'En el refugio';if(job)job.workerReason=npc.status;continue;}
     if(npc.cargo){
       npc.status='Transportando '+npc.cargo.amount+' materiales';
@@ -96,9 +133,9 @@ export function workersTick(w,assigned,online,dt,now){
       npc.status='Caminando al recurso';
       if(resource?.hits>0&&walk(w,npc,resource,1.8,dt,nav)){
         npc.status='Extrayendo';npc.work+=dt;npc.angle=Math.atan2(resource.y-npc.y,resource.x-npc.x);
-        if(npc.work>=20){resource.hits--;if(!resource.hits)resource.readyAt=now+(resource.kind==='tree'?180000:240000);npc.cargo={kind:resource.kind==='tree'?'timber':'stone',amount:resource.kind==='tree'?6:8};npc.work=0;nav.routes.delete(npc.id);}
+        if(npc.work>=workerSeconds(job.level)){resource.hits--;if(!resource.hits)resource.readyAt=now+(resource.kind==='tree'?180000:240000);npc.cargo={kind:resource.kind==='tree'?'timber':'stone',amount:workerYield(resource.kind,c.tech)};npc.work=0;nav.routes.delete(npc.id);}
       }
     }
-    job.workerReason=npc.status;job.producedAt=now-Math.min(20,npc.work)*1000;
+    job.workerReason=npc.status;job.producedAt=now-Math.min(workerSeconds(job.level),npc.work)*1000;
   }
 }

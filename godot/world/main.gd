@@ -1,6 +1,7 @@
 extends Node3D
 const Art = preload("res://world/art.gd")
 const Shapes = preload("res://world/shapes.gd")
+const Collector = preload("res://world/collector.gd")
 const Expedition = preload("res://world/expedition.gd")
 const BuildingView = preload("res://building/view.gd")
 const Placement = preload("res://building/placement.gd")
@@ -14,6 +15,7 @@ const ShotAudio = preload("res://combat/audio.gd")
 var state: Dictionary = {}
 var me: Dictionary = {}
 var actors: Dictionary = {}
+var dying_actors := Node3D.new()
 var structures: Dictionary = {}
 var terrain := Node3D.new()
 var props := Node3D.new()
@@ -46,8 +48,35 @@ var performance_timer := 0.0
 var center_on_entry := true
 var survival_zoom := 32.0
 var sprint_sent := false
+var controls_focused := true
+var controls_active := false
+var target_worker := ""
+var suppress_fire_until_release := false
+
+func _notification(what: int) -> void:
+	if what == NOTIFICATION_APPLICATION_FOCUS_OUT:
+		set_controls_focus(false)
+	elif what == NOTIFICATION_APPLICATION_FOCUS_IN:
+		set_controls_focus(true)
+
+func set_controls_focus(focused: bool) -> void:
+	controls_focused = focused
+	if not focused and is_node_ready():
+		stop_controls()
+
+func stop_controls() -> void:
+	controls_active = false
+	target_worker = ""
+	row_dragging = false
+	shot_timer = 0.2
+	sprint_sent = false
+	if network.connected:
+		network.action_queue.clear()
+		network.send_input(Vector2.ZERO,float(me.get("angle",0)))
+		network.act("sprint",{"enabled":false})
 
 func _ready() -> void:
+	add_child(dying_actors)
 	add_child(terrain)
 	add_child(props)
 	add_child(trails)
@@ -60,6 +89,7 @@ func _ready() -> void:
 	# Preview floor is replaced by the real world's geometry on first snapshot.
 	Shapes.box(terrain, Vector3(220, 0.4, 220), Vector3(110, -0.2, 110), Color("263e38"), true)
 	for binding in [["left", KEY_A], ["right", KEY_D], ["forward", KEY_W], ["back", KEY_S]]:
+		if InputMap.has_action(binding[0]): continue
 		InputMap.add_action(binding[0])
 		var event := InputEventKey.new()
 		event.physical_keycode = binding[1]
@@ -69,6 +99,16 @@ func _ready() -> void:
 	network.action_feedback.connect(hud.notify_action)
 	hud.population_panel.command.connect(func(action,id):
 		if network.connected and me.get("alive",false): network.act(action,{"id":id})
+	)
+	hud.population_panel.resident_order.connect(func(order,id):
+		if not network.connected or not me.get("alive",false): return
+		if order=="move":
+			set_build_mode(false)
+			hud.population_panel.hide()
+			target_worker=id
+			hud.notify_action("Residente seleccionado: clic izquierdo en suelo libre para mover. Esc o clic derecho: cancelar.",true)
+		else:
+			network.act("worker_order",{"id":id,"order":order})
 	)
 	hud.cosmetic_requested.connect(func(style):
 		if network.connected: network.act("cosmetic",{"style":style})
@@ -101,6 +141,7 @@ func _ready() -> void:
 	network.refresh_worlds()
 
 func enter(world: String, community: String, agent_name: String) -> void:
+	target_worker=""
 	center_on_entry=true
 	selected_world = world
 	selected_community = community
@@ -110,6 +151,8 @@ func enter(world: String, community: String, agent_name: String) -> void:
 	await network.enter(world, community, agent_name)
 
 func leave() -> void:
+	clear_children(dying_actors)
+	target_worker=""
 	network.disconnect_world()
 	me = {}
 	set_build_mode(false)
@@ -154,6 +197,7 @@ func receive_state(value: Dictionary) -> void:
 	previous_weapon=str(me.get("weapon","pistol"))
 	if not me.get("alive",false) and building: set_build_mode(false)
 	if world_key != state.id:
+		clear_children(dying_actors)
 		world_key = state.id
 		for actor in actors.values():
 			actor.queue_free()
@@ -206,13 +250,22 @@ func sync_actors() -> void:
 			if not actors.has(key):
 				var actor = ZombieScene.instantiate() if kind == "zombies" else PlayerScene.instantiate()
 				actor.worker=kind=="workers"
+				actor.legacy_model=kind=="zombies" and (entity.get("boss",false) or entity.get("variant","")=="brute")
 				add_child(actor)
 				actors[key] = actor
 			actors[key].update_state(entity)
 			if kind=="workers": actors[key].caption.visible=Vector2(entity.x-me.x,entity.y-me.y).length()<8
 	for key in actors.keys():
 		if not keep.has(key):
-			actors[key].queue_free()
+			var killed := false
+			for corpse in state.get("fallen",[]):
+				if key=="zombies"+str(corpse.id): killed=true
+			for effect in state.get("effects",[]):
+				if effect.get("power","")=="death" and key=="zombies"+str(effect.get("actorId","")): killed=true
+			if killed:
+				actors[key].reparent(dying_actors)
+				actors[key].retire()
+			else: actors[key].queue_free()
 			actors.erase(key)
 
 func sync_structures() -> void:
@@ -286,12 +339,27 @@ func sync_props() -> void:
 			prop_nodes[key]=root
 		var incident: Dictionary = state.get("adventure",{}).get("incident",{}) if state.get("adventure",{}).get("incident") is Dictionary else {}
 		var label: Label3D = prop_nodes[key].get_node("SiteLabel")
+		Expedition.update(prop_nodes[key],site)
 		var remaining := maxi(0,int(ceil((float(site.get("readyAt",0))-Time.get_unix_time_from_system()*1000)/1000)))
 		label.text=str(site.name)+(" · E" if remaining==0 else " · %d s" % remaining)
 		if incident.get("siteId","")==site.id:
 			label.text=str(incident.title)+" · E · %d s" % maxi(0,int(incident.endsAt-state.adventure.elapsed))
 			label.modulate=Color("ffca71")
 		else: label.modulate=Color.WHITE
+		if site.has("interior") and Vector2(site.x-me.x,site.y-me.y).length()<14 and remaining==0:
+			var encounter = site.get("encounter")
+			label.text=str(site.name)+"\n"+("Activa la señal amarilla · E" if not encounter is Dictionary else ("Informe listo · E en la sala" if encounter.get("status","")=="ready" else "%d infectados · Objetivo %d/%d s" % [encounter.remaining,encounter.progress,encounter.required]))
+	for room in state.get("adventure",{}).get("collectors",[]):
+		if Vector2(room.x-me.x,room.y-me.y).length()>48: continue
+		var key: String = "collector-"+str(room.id)
+		keep[key]=true
+		if not prop_nodes.has(key):
+			var root := Node3D.new()
+			persistent_props.add_child(root)
+			root.position=Vector3(room.x,0,room.y)
+			Collector.create(root,room)
+			prop_nodes[key]=root
+		Collector.update(prop_nodes[key],room)
 	for passage in state.get("adventure",{}).get("passages",[]):
 		if Vector2(passage.x-me.x,passage.y-me.y).length()>48: continue
 		var key: String = "passage-"+str(passage.id)
@@ -304,7 +372,7 @@ func sync_props() -> void:
 			Shapes.cylinder(root,1.35,0.14,Vector3(0,0.08,0),Color("171e28"))
 			for i in range(5): Shapes.box(root,Vector3(0.9,0.08,0.16),Vector3(0,0.2,-0.9+i*0.4),Color("a78b62"))
 			Art.batch_static(root,true)
-			var label := Shapes.label(root,str(passage.name)+" · E · 25 resistencia",2.8,Color("c5a9eb"))
+			var label := Shapes.label(root,str(passage.name)+" · E · %d resistencia" % passage.get("cost",25),2.8,Color("c5a9eb"))
 			label.font_size=22
 			prop_nodes[key]=root
 	for drop in state.drops:
@@ -365,9 +433,14 @@ func sync_props() -> void:
 		Shapes.cylinder(props, radius, 0.1, Vector3(effect.x, 0.12, effect.y), tint)
 
 func playable() -> bool:
-	return network.connected and not me.is_empty() and not hud.lobby.visible and not hud.journal.visible and not hud.settings.visible and not hud.population_panel.visible and me.get("alive", false) and state.get("phase", "") == "active" and not state.get("adventure",{}).get("paused",false)
+	var focused_control := get_viewport().gui_get_focus_owner()
+	return controls_focused and not (focused_control is LineEdit or focused_control is TextEdit) and network.connected and not me.is_empty() and not hud.lobby.visible and not hud.journal.visible and not hud.settings.visible and not hud.population_panel.visible and me.get("alive", false) and state.get("phase", "") == "active" and not state.get("adventure",{}).get("paused",false)
 
 func _process(delta: float) -> void:
+	if not Input.is_mouse_button_pressed(MOUSE_BUTTON_LEFT): suppress_fire_until_release=false
+	var active := playable() and not building
+	if controls_active and not active: stop_controls()
+	controls_active = active
 	performance_timer+=delta
 	if performance_timer>=0.5:
 		performance_timer=0
@@ -439,7 +512,7 @@ func _process(delta: float) -> void:
 			hud.build_hint.text="Fila: %d piezas · %d materiales\nSoltar: construir · Clic derecho: cancelar\n%s" % [count,count*d.cost,row_reason]
 		else:
 			hud.build_hint.text+="\nMayús + arrastrar: fila de defensas"
-	elif Input.is_mouse_button_pressed(MOUSE_BUTTON_LEFT) and shot_timer <= 0 and get_viewport().gui_get_hovered_control() == null:
+	elif target_worker.is_empty() and not suppress_fire_until_release and Input.is_mouse_button_pressed(MOUSE_BUTTON_LEFT) and shot_timer <= 0 and get_viewport().gui_get_hovered_control() == null:
 		if me.get("equipped","weapon")=="tool":
 			shot_timer=0.85
 			var target: Dictionary = {}
@@ -465,12 +538,25 @@ func _unhandled_input(event: InputEvent) -> void:
 		if event.physical_keycode == KEY_J:
 			hud.toggle_journal()
 		if event.physical_keycode == KEY_ESCAPE:
+			target_worker=""
 			set_build_mode(false)
 			hud.journal.hide()
 			hud.settings.hide()
 			hud.population_panel.hide()
 	if not playable():
 		return
+	if not target_worker.is_empty() and event is InputEventMouseButton and event.pressed:
+		if event.button_index==MOUSE_BUTTON_LEFT:
+			suppress_fire_until_release=true
+			var point: Vector3 = camera.ground_point()
+			network.act("worker_order",{"id":target_worker,"order":"move","x":point.x,"y":point.z})
+			target_worker=""
+			shot_timer=0.3
+			return
+		if event.button_index==MOUSE_BUTTON_RIGHT:
+			target_worker=""
+			hud.notify_action("Orden de movimiento cancelada",true)
+			return
 	if event is InputEventMouseButton and event.pressed and event.button_index==MOUSE_BUTTON_RIGHT:
 		if row_dragging:
 			row_dragging=false

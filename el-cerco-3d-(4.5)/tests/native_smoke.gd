@@ -29,6 +29,11 @@ func player(client: Node, id: String) -> Dictionary:
 	return {}
 
 func run() -> void:
+	var baseline_state := {"version":6,"players":[{"id":"a","hp":100,"private":1}]}
+	var patch := {"wire":1,"seq":2,"base":1,"set":{},"remove":[],"entities":{"players":{"upsert":[{"id":"a","set":{"hp":50},"remove":["private"]}],"remove":[]}}}
+	var decoded: Dictionary = Client.Replication.apply(baseline_state,1,patch)
+	check(decoded.state.players[0].hp==50 and not decoded.state.players[0].has("private") and baseline_state.players[0].hp==100,"native patches remove fields without mutating previous state")
+	check(Client.Replication.apply(baseline_state,2,patch).has("error"),"native decoder rejects missing or repeated sequence")
 	game = load("res://world/main.tscn").instantiate()
 	root.add_child(game)
 	await process_frame
@@ -138,6 +143,18 @@ func run() -> void:
 	game.set_build_mode(false)
 	check(not game.row_dragging and game.row_ghosts.get_child_count()==0,"leaving build mode cancels row preview")
 	check(a.latest.adventure.sites.size()==12,"expedition sites synchronized")
+	var interior_site: Dictionary = a.latest.adventure.sites[0]
+	check(interior_site.has("interior") and interior_site.has("hint"),"explorable hospital and objective hint synchronized")
+	var interior_view := Node3D.new()
+	game.add_child(interior_view)
+	game.Expedition.create(interior_view,interior_site)
+	game.Expedition.update(interior_view,interior_site)
+	check(interior_view.get_node("EntryMarker").visible and not interior_view.get_node("ObjectiveMarker").visible,"interior marks its entry interaction")
+	var active_site: Dictionary = interior_site.duplicate(true)
+	active_site.encounter={"status":"active"}
+	game.Expedition.update(interior_view,active_site)
+	check(interior_view.get_node("ObjectiveMarker").visible and not interior_view.get_node("EntryMarker").visible,"active encounter reveals the inner objective")
+	interior_view.queue_free()
 	check(player(a,b.player_id).materials.timber==6,"typed wood reaches native client")
 	game.hud.category.select(1)
 	game.hud.show_state(a.latest,player(a,a.player_id),true)
@@ -167,6 +184,18 @@ func run() -> void:
 	a.act("cosmetic",{"style":"standard"})
 	check(await until(func(): return a.latest.get("cosmetics",{}).get("equipped","")=="standard"),"account cosmetic equips through authenticated server")
 	check(game.hud.cosmetic_buttons.ember.disabled and "Activo" in game.hud.cosmetic_buttons.standard.text,"shop explains equipped style and disables unaffordable purchases")
+	check(a.delta_frames>5 and a.state_sequence>5,"native client reconstructs incremental snapshots")
+	check(a.latest.adventure.get("collectors",[]).size()==2 and a.latest.adventure.passages.size()==8,"two galleries and their inner exits synchronized")
+	var collector := Node3D.new()
+	game.add_child(collector)
+	var room: Dictionary = a.latest.adventure.collectors[0].duplicate(true)
+	game.Collector.create(collector,room)
+	game.Collector.update(collector,room)
+	check(collector.get_node("Gas").visible and "VENTILAR" in collector.get_node("Valve/Label").text,"gas and ventilation prompt visible")
+	room.purgedUntil=Time.get_unix_time_from_system()*1000+120000
+	game.Collector.update(collector,room)
+	check(not collector.get_node("Gas").visible and "SUMINISTROS" in collector.get_node("Cache/Label").text,"ventilated gallery reveals supply prompt")
+	collector.queue_free()
 	var example: Dictionary = a.latest.duplicate(true)
 	example.population={"residents":2,"capacity":2,"working":1,"food":2,"water":2,"fedSeconds":40,"rationCost":1,"jobs":[{"id":"example-mill","kind":"sawmill","x":43,"y":57,"stock":6,"working":true,"reason":""}]}
 	game.hud.population_panel.update_state(example,player(a,a.player_id))
@@ -177,10 +206,44 @@ func run() -> void:
 	game.hud.population_panel.update_state(a.latest,player(a,a.player_id))
 	check(game.hud.population_panel.job_rows.is_empty(),"community rows update without leaving stale jobs")
 	check(game.hud.settings.volume.max_value==100,"audio and video settings loaded")
+	check(game.hud.population_panel.resident_ids.size()==1,"community panel lists individual residents")
+	check("Saldo teórico/min" in game.hud.population_panel.summary.text,"community panel explains food and water balance")
+	check("Oleada prevista" in game.hud.stats.text,"HUD displays authoritative wave forecast")
+	var resident_id: String = game.hud.population_panel.resident_ids[0]
+	game.hud.population_panel.resident_order.emit("hold",resident_id)
+	check(await until(func(): return a.latest.population.people[0].order=="hold"),"individual hold order reaches authoritative server")
+	if "--capture" in OS.get_cmdline_user_args():
+		game.hud.population_panel.show()
+		await process_frame
+		await process_frame
+		get_root().get_texture().get_image().save_png(ProjectSettings.globalize_path("res://../docs/population-020.png"))
+		game.hud.population_panel.hide()
+	game.hud.population_panel.resident_order.emit("move",resident_id)
+	check(game.target_worker==resident_id and not game.hud.population_panel.visible,"move order opens ground selection")
+	var cancel_order := InputEventKey.new()
+	cancel_order.physical_keycode=KEY_ESCAPE
+	cancel_order.pressed=true
+	game._unhandled_input(cancel_order)
+	check(game.target_worker.is_empty(),"escape cancels resident destination selection")
+	game.hud.population_panel.resident_order.emit("auto",resident_id)
+	check(await until(func(): return a.latest.population.people[0].order=="auto"),"resident returns to automatic work")
+	game.set_controls_focus(false)
+	check(not game.playable(),"losing application focus blocks gameplay")
+	game.set_controls_focus(true)
+	# A stop sent while another input is in flight must reach the authority.
+	a.send_input(Vector2.RIGHT,0)
+	a.send_input(Vector2.ZERO,0)
+	check(await until(func(): return not a.input_busy and a.pending_input.is_empty()),"latest stop intention drains after in-flight movement")
+	await create_timer(0.3).timeout
+	var stopped_x := float(player(a,a.player_id).x)
+	await create_timer(0.2).timeout
+	check(absf(float(player(a,a.player_id).x)-stopped_x)<0.05,"authoritative player remains stopped")
 	a.act("dodge")
 	check(await until(func(): return player(a,a.player_id).get("dodgeAfter",0)>0),"dodge synchronized")
 	var old_id: String = a.player_id
 	var old_materials := int(player(a, old_id).wood)
+	a.act("sprint",{"enabled":true})
+	check(await until(func(): return player(a,old_id).get("sprinting",false)),"sprint enabled before connection loss")
 	a.disconnect_world()
 	check(await until(func(): return b.latest.get("connectedCount", 2) == 1), "disconnect removes presence")
 	await a.enter(world, "city", "Ignored rename")
@@ -188,6 +251,27 @@ func run() -> void:
 	check(a.player_id == old_id and player(a, old_id).communityId == "forest", "reconnect preserves identity and faction")
 	check(int(player(a, old_id).wood) == old_materials, "reconnect preserves materials")
 	check(a.latest.walls.size() == 5, "reconnect preserves construction")
+	check(not player(a,old_id).get("sprinting",true),"reconnection does not retain a held sprint key")
+	a.stream.close()
+	check(await until(func(): return a.reconnect_at>0),"broken stream schedules automatic recovery")
+	check(await until(func(): return a.connected,8),"automatic recovery restores snapshots")
+	check(a.player_id==old_id and a.latest.walls.size()==5,"automatic recovery preserves identity and buildings")
+	a.fail_stream("Test interruption")
+	a.disconnect_world()
+	await create_timer(1.2).timeout
+	check(not a.connected and a.reconnect_at==0 and a.reconnect_target.is_empty(),"explicit leave cancels scheduled recovery")
+	await a.enter(world,"forest","Native A")
+	check(await until(func(): return a.connected),"manual entry remains available after cancelling recovery")
+	var takeover: Dictionary = await a.request_json("/api/join",{"worldId":world,"key":a.identities[world]},true)
+	check(not takeover.has("error"),"same identity can be opened by a replacement connection")
+	check(await until(func(): return not a.connected and a.reconnect_target.is_empty()),"replaced session stops instead of fighting the new connection")
+	await a.enter(world,"forest","Native A")
+	check(await until(func(): return a.connected),"explicit reconnect can reclaim the profile")
+	for attempt in range(6): a.fail_stream("Test retry limit")
+	check(a.reconnect_attempt==5 and a.reconnect_at==0,"automatic recovery has a five-attempt limit")
+	a.disconnect_world()
+	await a.enter(world,"forest","Native A")
+	check(await until(func(): return a.connected),"manual entry works after retry exhaustion")
 	check(await until(func(): return float(player(a, old_id).get("hp", 100)) < 100, 12), "infected pursues and damages native player")
 	# Optional real-render screenshot when run without --headless.
 	if "--capture" in OS.get_cmdline_user_args():
@@ -214,7 +298,7 @@ func run() -> void:
 		var total := 0.0
 		for duration in timings: total+=duration
 		var report := {"frames":timings.size(),"average_fps":timings.size()*1000.0/total,"p95_frame_ms":timings[int(timings.size()*0.95)],"resolution":"1280x720","renderer":"Compatibility","scenario":"2 clients, 3 infected, 5 structures, building mode, 5 seconds","draw_calls":Performance.get_monitor(Performance.RENDER_TOTAL_DRAW_CALLS_IN_FRAME)}
-		var file := FileAccess.open("res://../docs/performance-014.json",FileAccess.WRITE)
+		var file := FileAccess.open("res://../docs/performance-art-021.json",FileAccess.WRITE)
 		file.store_string(JSON.stringify(report,"  "))
 		print("PERFORMANCE "+JSON.stringify(report))
 		game.set_process(false)
@@ -224,6 +308,8 @@ func run() -> void:
 		var site: Dictionary = showcase.adventure.sites[0]
 		for person in showcase.players:
 			if person.id==a.player_id:
+				person.alive=true
+				person.hp=100
 				person.x=site.x
 				person.y=site.y+2
 		showcase.workers=[{"id":"showcase-worker","name":"Inés","x":site.x+2,"y":site.y+2,"status":"Transportando materiales","cargo":{"amount":6},"communityId":"forest"}]
@@ -232,12 +318,22 @@ func run() -> void:
 		game.camera.focus=Vector3(site.x,0,site.y)
 		await create_timer(0.6).timeout
 		await RenderingServer.frame_post_draw
-		check(root.get_texture().get_image().save_png("res://../docs/world-014.png")==OK,"expedition and worker showcase captured")
+		check(root.get_texture().get_image().save_png("res://../docs/interior-019.png")==OK,"expedition interior showcase captured")
 		game.hud.toggle_journal()
 		await process_frame
 		await RenderingServer.frame_post_draw
 		check(root.get_texture().get_image().save_png("res://../docs/journal-014.png")==OK,"journal and cosmetic shop captured")
 		game.hud.toggle_journal()
+		var gallery: Dictionary = showcase.adventure.collectors[0]
+		for person in showcase.players:
+			if person.id==a.player_id:
+				person.x=gallery.x-7
+				person.y=gallery.y
+		game.receive_state(showcase)
+		game.camera.focus=Vector3(gallery.x,0,gallery.y)
+		await create_timer(0.6).timeout
+		await RenderingServer.frame_post_draw
+		check(root.get_texture().get_image().save_png("res://../docs/collectors-015.png")==OK,"walkable gallery captured")
 	if "--stress" in OS.get_cmdline_user_args():
 		if a.snapshot_received.is_connected(game.receive_state): a.snapshot_received.disconnect(game.receive_state)
 		var stress: Dictionary = a.latest.duplicate(true)
@@ -267,7 +363,7 @@ func run() -> void:
 		var total := 0.0
 		for duration in frames: total+=duration
 		var report := {"average_fps":frames.size()*1000.0/total,"p95_frame_ms":frames[int(frames.size()*0.95)],"draw_calls":Performance.get_monitor(Performance.RENDER_TOTAL_DRAW_CALLS_IN_FRAME),"scenario":"Static render stress: 96 infected, 80 walls, 32 residents; no simulated AI for added entities","resolution":"1280x720"}
-		var file := FileAccess.open("res://../docs/performance-014-stress.json",FileAccess.WRITE)
+		var file := FileAccess.open("res://../docs/performance-art-021-stress.json",FileAccess.WRITE)
 		file.store_string(JSON.stringify(report,"  "))
 		print("STRESS "+JSON.stringify(report))
 	var ended_state: Dictionary = a.latest.duplicate(true)
