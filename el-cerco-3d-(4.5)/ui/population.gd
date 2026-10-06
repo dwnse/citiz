@@ -11,13 +11,14 @@ var resident_buttons: Array[Button] = []
 var people: Array = []
 
 func _ready() -> void:
-	position=Vector2(355,75)
-	custom_minimum_size=Vector2(590,390)
+	position=Vector2(290,75)
+	custom_minimum_size=Vector2(700,390)
 	var rows := VBoxContainer.new()
 	rows.add_theme_constant_override("separation",12)
 	add_child(rows)
 	var title := Label.new()
-	title.text="EL CERCO / COMUNIDAD"
+	title.text="COMUNIDAD"
+	preload("res://ui/illustrated_theme.gd").heading(title, 32)
 	rows.add_child(title)
 	summary.autowrap_mode=TextServer.AUTOWRAP_WORD_SMART
 	summary.custom_minimum_size=Vector2(550,90)
@@ -49,6 +50,7 @@ func _ready() -> void:
 	close.text="Volver · O / Esc"
 	close.focus_mode=Control.FOCUS_NONE
 	close.pressed.connect(hide)
+	preload("res://ui/illustrated_theme.gd").accent(close, "695634")
 	rows.add_child(close)
 	hide()
 

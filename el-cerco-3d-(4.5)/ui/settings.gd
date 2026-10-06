@@ -7,17 +7,19 @@ var limit := OptionButton.new()
 var fullscreen := CheckButton.new()
 
 func _ready() -> void:
-	position=Vector2(420,180)
-	custom_minimum_size=Vector2(440,300)
+	position=Vector2(310,115)
+	custom_minimum_size=Vector2(660,450)
 	preferences.load("user://preferences.cfg")
 	var rows := VBoxContainer.new()
 	rows.add_theme_constant_override("separation",12)
 	add_child(rows)
 	var title := Label.new()
-	title.text="EL CERCO / AJUSTES"
+	title.text="CONFIGURACIÓN"
+	preload("res://ui/illustrated_theme.gd").heading(title, 34)
 	rows.add_child(title)
 	var info := Label.new()
 	info.text="La pausa individual se activa con P.\nEn multijugador el mundo sigue activo."
+	info.add_theme_font_size_override("font_size", 16)
 	rows.add_child(info)
 	var label := Label.new()
 	label.text="Volumen"
@@ -55,6 +57,7 @@ func _ready() -> void:
 	fullscreen.toggled.connect(func(enabled): DisplayServer.window_set_mode(DisplayServer.WINDOW_MODE_FULLSCREEN if enabled else DisplayServer.WINDOW_MODE_WINDOWED))
 	var close := Button.new()
 	close.text="Volver · Esc"
+	preload("res://ui/illustrated_theme.gd").accent(close, "695634")
 	rows.add_child(close)
 	close.pressed.connect(hide)
 	hide()

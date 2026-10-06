@@ -46,11 +46,16 @@ func run() -> void:
 		quit(1)
 		return
 	var world: String = directory.worlds[0].id
-	await a.enter(world, "forest", "Native A")
+	game.hud.set_worlds(directory.worlds)
+	game.hud.open_menu_selection()
+	game.hud.agent_name.text = "Native A"
+	game.hud.enter_button.pressed.emit()
 	if not await until(func(): return a.connected):
 		check(false, "first native SSE connection")
 		quit(1)
 		return
+	check(not game.hud.lobby.visible and not game.hud.start_menu.selection.visible and not game.hud.modal_layer.visible, "Enter button connects and closes selector and blocker")
+	check(game.playable(), "successful entry restores playable controls")
 	b = Client.new()
 	root.add_child(b)
 	b.identities = {}

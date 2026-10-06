@@ -1,6 +1,7 @@
 extends CanvasLayer
 const Placement = preload("res://building/placement.gd")
 const Minimap = preload("res://ui/minimap.gd")
+const MenuSkin = preload("res://ui/illustrated_theme.gd")
 signal enter_requested(world: String, community: String, agent_name: String)
 signal refresh_requested
 signal create_requested
@@ -19,8 +20,15 @@ signal rebuild_requested
 var population_panel := preload("res://ui/population.gd").new()
 var settings := preload("res://ui/settings.gd").new()
 var lobby: PanelContainer
+var start_menu: Control
+var modal_layer := Control.new()
+var modal_frame := Control.new()
+var modal_open := false
+var background_focus: Dictionary = {}
+var gameplay_chrome: Array[Control] = []
 var worlds := OptionButton.new()
 var communities := OptionButton.new()
+var community_cards := preload("res://ui/community_cards.gd").new()
 var agent_name := LineEdit.new()
 var status := Label.new()
 var stats := Label.new()
@@ -75,6 +83,9 @@ func notify_action(message: String, success: bool) -> void:
 	toast_seconds=5
 
 func _process(delta: float) -> void:
+	if is_instance_valid(start_menu):
+		start_menu.set_status(status.text)
+		start_menu.set_connection_available(not str(get_parent().get("selected_world")).is_empty())
 	toast_seconds=maxf(0,toast_seconds-delta)
 	toast.visible=toast_seconds>0
 
@@ -83,6 +94,13 @@ func button(parent: Node, text: String, callback: Callable) -> Button:
 	b.text = text
 	b.pressed.connect(callback)
 	parent.add_child(b)
+	if text in ["Entrar", "Actualizar partidas"]:
+		MenuSkin.accent(b, "bc8110")
+	elif text == "Nueva partida":
+		MenuSkin.accent(b, "4d841b")
+	elif text.begins_with("Volver") or text.begins_with("Cerrar"):
+		MenuSkin.accent(b, "695634")
+	MenuSkin.facets(b)
 	return b
 
 func _ready() -> void:
@@ -189,7 +207,7 @@ func _ready() -> void:
 	root.add_child(performance)
 	inspector=PanelContainer.new()
 	inspector.set_anchors_and_offsets_preset(Control.PRESET_TOP_RIGHT)
-	inspector.position=Vector2(-315,335)
+	inspector.position=Vector2(-365,260)
 	inspector.custom_minimum_size=Vector2(295,180)
 	root.add_child(inspector)
 	var inspection_rows := VBoxContainer.new()
@@ -240,17 +258,44 @@ func _ready() -> void:
 	help_label.mouse_filter=Control.MOUSE_FILTER_IGNORE
 	root.add_child(help_label)
 	lobby = PanelContainer.new()
-	lobby.position = Vector2(435, 210)
-	lobby.custom_minimum_size = Vector2(420, 290)
+	lobby.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+	lobby.add_theme_stylebox_override('panel', StyleBoxEmpty.new())
 	root.add_child(lobby)
 	var menu := VBoxContainer.new()
-	menu.add_theme_constant_override("separation", 12)
-	lobby.add_child(menu)
+	menu.add_theme_constant_override("separation", 5)
+	start_menu = preload("res://ui/start_menu.gd").new()
+	lobby.add_child(start_menu)
+	var selection: PanelContainer = start_menu.selection
+	start_menu.frame.add_child(selection)
+	selection.position = Vector2(386, 94)
+	selection.custom_minimum_size = Vector2(900, 0)
+	selection.add_child(menu)
+	MenuSkin.decorate(selection, 20)
+	selection.hide()
+	start_menu.hit_button("Jugar", Rect2(63, 349, 490, 107), open_menu_selection, "Elegir partida, comunidad y nombre del agente")
+	start_menu.continue_button = start_menu.hit_button("Continuar", Rect2(63, 463, 484, 98), func(): reconnect_requested.emit(), "Reconectar al último perfil usado en esta sesión")
+	start_menu.hit_button("Configuración", Rect2(63, 571, 487, 95), toggle_menu_settings, "Abrir los ajustes actuales")
+	start_menu.exit_button = start_menu.hit_button("Salir", Rect2(63, 673, 486, 99), func(): pass, "Salir no disponible")
+	start_menu.exit_button.disabled = true
+	start_menu.hit_button("Partidas", Rect2(965, 35, 154, 55), open_menu_selection, "Abrir el selector de partidas")
+	start_menu.reconnect_button = start_menu.hit_button("Reconectar", Rect2(1132, 35, 168, 55), func(): reconnect_requested.emit(), "Reconectar al último perfil usado en esta sesión")
+	start_menu.hit_button("Comunidad", Rect2(1312, 35, 170, 55), toggle_population, "La comunidad está disponible dentro de una partida")
+	start_menu.hit_button("Ajustes", Rect2(1494, 35, 152, 55), toggle_menu_settings, "Abrir los ajustes actuales")
+	start_menu.set_connection_available(false)
+	start_menu.install_status()
 	var heading := Label.new()
-	heading.text = "EL CERCO · CLIENTE GODOT\nElige una partida y conserva tu perfil al reconectar."
+	heading.text = "PARTIDAS"
+	MenuSkin.heading(heading, 38)
 	menu.add_child(heading)
+	var subtitle := Label.new()
+	subtitle.text = "Elige una partida y conserva tu perfil al reconectar."
+	subtitle.add_theme_font_size_override("font_size", 21)
+	menu.add_child(subtitle)
 	menu.add_child(worlds)
+	worlds.custom_minimum_size.y = 44
 	menu.add_child(communities)
+	communities.hide()
+	menu.add_child(community_cards)
 	worlds.item_selected.connect(func(_i): update_communities())
 	agent_name.placeholder_text = "Nombre del agente"
 	agent_name.text = "Agente Godot"
@@ -259,16 +304,22 @@ func _ready() -> void:
 	enter_button=button(menu, "Entrar", enter_selection)
 	button(menu, "Actualizar partidas", func(): refresh_requested.emit())
 	button(menu, "Nueva partida", func(): create_requested.emit())
+	button(menu, "Volver al menú", selection.hide)
 	journal = PanelContainer.new()
-	journal.position = Vector2(280, 170)
+	journal.position = Vector2(230, 85)
 	journal.custom_minimum_size = Vector2(720, 410)
 	journal.visible = false
 	root.add_child(journal)
 	var journal_rows := VBoxContainer.new()
 	journal.add_child(journal_rows)
-	journal_text.custom_minimum_size = Vector2(690, 350)
+	journal_text.custom_minimum_size = Vector2(690, 300)
 	journal_text.bbcode_enabled = false
+	var journal_heading := Label.new()
+	journal_heading.text = "DIARIO / EQUIPO"
+	MenuSkin.heading(journal_heading, 28)
+	journal_rows.add_child(journal_heading)
 	journal_rows.add_child(journal_text)
+	journal_text.add_theme_font_size_override("normal_font_size", 15)
 	var weapons := HBoxContainer.new()
 	journal_rows.add_child(weapons)
 	for entry in [["pistol","Pistola"],["shotgun","Escopeta · 60 + 2 componentes"],["rifle","Rifle · 90 + 4 componentes"]]:
@@ -284,6 +335,94 @@ func _ready() -> void:
 	button(journal_rows, "Cerrar diario", toggle_journal)
 	root.add_child(settings)
 	root.add_child(population_panel)
+	for submenu in [settings, population_panel, journal, build_panel, inspector]:
+		MenuSkin.decorate(submenu, 15)
+	build_panel.theme = MenuSkin.compact_theme()
+	inspector.theme = MenuSkin.compact_theme()
+	MenuSkin.heading(build_title, 20)
+	var inspector_heading := Label.new()
+	inspector_heading.text = "GESTIONAR"
+	MenuSkin.heading(inspector_heading, 20)
+	inspection_rows.add_child(inspector_heading)
+	inspection_rows.move_child(inspector_heading, 0)
+	gameplay_chrome.assign([panel, hotbar, controls, minimap, help_label, performance, status])
+	lobby.visibility_changed.connect(update_menu_presentation)
+	update_menu_presentation()
+	# Main submenus live above the background and its clickable controls.
+	root.add_child(modal_layer)
+	modal_layer.name = "ModalLayer"
+	modal_layer.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+	modal_layer.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	var shade := ColorRect.new()
+	shade.name = "InputBlocker"
+	shade.color = Color(0.015, 0.025, 0.01, 0.55)
+	shade.mouse_filter = Control.MOUSE_FILTER_STOP
+	modal_layer.add_child(shade)
+	shade.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+	modal_layer.add_child(modal_frame)
+	modal_frame.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	selection.reparent(modal_frame, false)
+	for popup in [settings, population_panel, journal]:
+		popup.reparent(modal_layer, false)
+	for popup in [selection, settings, population_panel, journal]:
+		popup.visibility_changed.connect(sync_modal_layer)
+	root.resized.connect(fit_modal_frame)
+	start_menu.resized.connect(fit_modal_frame)
+	fit_modal_frame()
+	sync_modal_layer()
+	# Feedback stays readable but never intercepts pointer input.
+	root.move_child(toast, root.get_child_count() - 1)
+
+func fit_modal_frame() -> void:
+	var factor := minf(start_menu.size.x / 1672.0, start_menu.size.y / 941.0)
+	modal_frame.size = Vector2(1672, 941)
+	modal_frame.scale = Vector2.ONE * factor
+	modal_frame.position = (start_menu.size - modal_frame.size * factor) * 0.5
+
+func sync_modal_layer() -> void:
+	var open: bool = start_menu.selection.visible or settings.visible or population_panel.visible or journal.visible
+	modal_layer.visible = open
+	start_menu.set_modal_open(open)
+	if open == modal_open:
+		return
+	modal_open = open
+	if open:
+		background_focus.clear()
+		for region in gameplay_chrome:
+			for control in region.find_children("*", "Control", true, false):
+				if control.focus_mode != Control.FOCUS_NONE:
+					background_focus[control] = control.focus_mode
+					control.release_focus()
+					control.focus_mode = Control.FOCUS_NONE
+		var active: Control = start_menu.selection if start_menu.selection.visible else (settings if settings.visible else (population_panel if population_panel.visible else journal))
+		for control in active.find_children("*", "Control", true, false):
+			if control.is_visible_in_tree() and control.focus_mode != Control.FOCUS_NONE and not (control is BaseButton and control.disabled):
+				control.grab_focus()
+				break
+	else:
+		for control in background_focus:
+			if is_instance_valid(control):
+				control.focus_mode = background_focus[control]
+		background_focus.clear()
+func update_menu_presentation() -> void:
+	for control in gameplay_chrome:
+		control.visible = not lobby.visible
+	# The selector is reparented into the modal layer, so hiding the lobby
+	# must also hide it explicitly when the first playable state arrives.
+	start_menu.selection.hide()
+	sync_modal_layer()
+
+func open_menu_selection() -> void:
+	settings.hide()
+	journal.hide()
+	population_panel.hide()
+	start_menu.show_selection()
+
+func toggle_menu_settings() -> void:
+	journal.hide()
+	population_panel.hide()
+	start_menu.selection.hide()
+	settings.visible = not settings.visible
 
 func set_worlds(items: Array) -> void:
 	var previous: String = str(worlds.get_selected_metadata()) if worlds.selected>=0 else ""
@@ -349,12 +488,14 @@ func inspect_structure(w: Dictionary,p: Dictionary,b: Dictionary) -> void:
 
 func update_communities() -> void:
 	communities.clear()
+	community_cards.rebuild(communities)
 	enter_button.disabled=worlds.selected<0
 	if worlds.selected < 0:
 		return
 	for c in directory[worlds.selected].communities:
 		communities.add_item("%s · %d/10" % [c.name, c.members])
 		communities.set_item_metadata(communities.item_count - 1, c.id)
+	community_cards.rebuild(communities)
 
 func enter_selection() -> void:
 	if worlds.selected >= 0 and communities.selected >= 0:

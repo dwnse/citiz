@@ -2,24 +2,20 @@
 
 importer="texture"
 type="CompressedTexture2D"
-uid="uid://b7rnaee4820no"
-path.s3tc="res://.godot/imported/Sam_Zombie_Atlas.png-beb5158073f511f783e9d46adb34af2b.s3tc.ctex"
+uid="uid://bbcs45upnayfp"
+path="res://.godot/imported/start_menu.png-2c8e2dd692f453a0683d661689c106f1.ctex"
 metadata={
-"imported_formats": ["s3tc_bptc"],
-"vram_texture": true
-}
-generator_parameters={
-"md5": "79cc7868cf7ceb93206105ccf9aa30ff"
+"vram_texture": false
 }
 
 [deps]
 
-source_file="res://assets/characters/Sam_Zombie_Atlas.png"
-dest_files=["res://.godot/imported/Sam_Zombie_Atlas.png-beb5158073f511f783e9d46adb34af2b.s3tc.ctex"]
+source_file="res://assets/ui/start_menu.png"
+dest_files=["res://.godot/imported/start_menu.png-2c8e2dd692f453a0683d661689c106f1.ctex"]
 
 [params]
 
-compress/mode=2
+compress/mode=0
 compress/high_quality=false
 compress/lossy_quality=0.7
 compress/uastc_level=0
@@ -27,7 +23,7 @@ compress/rdo_quality_loss=0.0
 compress/hdr_compression=1
 compress/normal_map=0
 compress/channel_pack=0
-mipmaps/generate=true
+mipmaps/generate=false
 mipmaps/limit=-1
 roughness/mode=0
 roughness/src_normal=""
@@ -41,4 +37,4 @@ process/normal_map_invert_y=false
 process/hdr_as_srgb=false
 process/hdr_clamp_exposure=false
 process/size_limit=0
-detect_3d/compress_to=0
+detect_3d/compress_to=1
