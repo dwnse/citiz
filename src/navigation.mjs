@@ -4,7 +4,7 @@ import {vaults} from './communities.mjs';
 const runtime = new WeakMap();
 export function solid(world, x, y, radius = .6, walls = true, resources = world.resources || []) {
   return x < 2 || y < 2 || x > (world.size||100)-2 || y > (world.size||100)-2 ||
-    vaults(world).some(v=>Math.hypot(x-v.x, y-v.y) < 2.2+radius) ||
+    vaults(world).some(v=>Math.hypot(x-v.x, y-v.y) < (v.radius||2.2)+radius) ||
     (world.obstacles || []).some(b => Math.abs(b.x-x) < b.sx+radius && Math.abs(b.y-y) < b.sy+radius) ||
     resources.some(r=>r.hits>0&&Math.hypot(r.x-x,r.y-y)<(r.kind==='tree'?.4:.8)+radius) ||
     (walls && world.walls.some(b => isSolid(b) && contains(b,x,y,radius)));

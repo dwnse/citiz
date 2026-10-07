@@ -37,6 +37,7 @@ static func reason(w: Dictionary, p: Dictionary, point: Vector2, kind: String, r
 	if Vector2(p.x,p.y).distance_to(center)>radius+6: return "Acércate a tu base"
 	if absf(point.x-50)<3 or (not w.get("legacy",false) and (absf(point.x-160)<3 or absf(point.y-105)<3)): return "Corredor público reservado"
 	var h := half(w,{"kind":kind,"rot":1 if rotated else 0})
+	if v.has("radius") and Vector2(maxf(0,absf(point.x-v.x)-h.x),maxf(0,absf(point.y-v.y)-h.y)).length()<float(v.radius): return "Deja libre la huella del núcleo"
 	if point.x-h.x<2 or point.y-h.y<2 or point.x+h.x>w.size-2 or point.y+h.y>w.size-2: return "Fuera del mapa"
 	var story: Dictionary = w.get("story",{})
 	if story.has("seal") and point.distance_to(Vector2(story.seal.x,story.seal.y))<7: return "Zona de historia reservada"

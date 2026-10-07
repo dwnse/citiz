@@ -3,7 +3,7 @@ import assert from 'node:assert/strict';
 import {mkdtempSync,rmSync,writeFileSync,readFileSync,existsSync} from 'node:fs';
 import {tmpdir} from 'node:os';
 import {join as pathJoin} from 'node:path';
-import {createWorld,join,action,tick,buildRadius} from '../src/world.mjs';
+import {createWorld,join,action,tick,buildRadius,CONFIG} from '../src/world.mjs';
 import {solid,navigationMetrics} from '../src/navigation.mjs';
 import {createServer} from '../server.mjs';
 
@@ -85,6 +85,46 @@ test('producción bloquea crear mundos y datos JSON inválidos se rechazan',asyn
   const f=fixture(),app=createServer({directory:f.directory,mode:'production'});
   try{const base=await listen(app);assert.equal((await post(base,'/api/worlds',{})).status,403);assert.equal((await post(base,'/api/join',null)).status,400);}
   finally{await app.close();f.cleanup();}
+});
+
+test('ocho partidas terminadas no bloquean crear otra ni pierden guardados',async()=>{
+ const f=fixture();let app=createServer({directory:f.directory});
+ try{
+  let base=await listen(app);
+  const first=await post(base,'/api/join',{name:'Veterano'});
+  while(app.worlds.length<8)assert.equal((await post(base,'/api/worlds',{})).status,201);
+  assert.equal((await post(base,'/api/worlds',{})).status,409,'ocho activas mantienen el límite');
+  for(const w of app.worlds)w.phase='defeat';
+  const saved=JSON.stringify(app.worlds);
+  const created=await post(base,'/api/worlds',{name:'Volver a jugar'});
+  assert.equal(created.status,201);
+  assert.equal(app.worlds.length,9);
+  assert.equal(JSON.stringify(app.worlds.slice(0,8)),saved);
+  const entered=await post(base,'/api/join',{worldId:created.data.world.id,accountKey:first.data.key,name:'Veterano'});
+  assert.equal(entered.status,200);
+  assert.equal(app.worlds[8].players[entered.data.id].alive,true);
+  await app.close();app=createServer({directory:f.directory});base=await listen(app);
+  assert.equal(app.worlds.length,9);
+  assert.equal((await post(base,'/api/join',{key:entered.data.key,worldId:created.data.world.id})).data.id,entered.data.id);
+  assert.equal(app.worlds[0].players[first.data.id].id,first.data.id);
+ }finally{await app.close();f.cleanup();}
+});
+
+test('un mundo sin clientes conserva el núcleo frente a infectados y respeta la caducidad',async()=>{
+ const f=fixture();let now=Date.now();const app=createServer({directory:f.directory,clock:()=>now});
+ try{
+  await listen(app);
+  const w=app.world,p=join(w,'offline','Offline');
+  w.zombies=[{id:'near-core',x:54,y:50,hp:100,maxHp:100,level:1,attack:0,communityId:'forest'}];
+  const saved=JSON.stringify({hp:w.vault.hp,zombies:w.zombies,tick:w.tick});
+  await new Promise(r=>setTimeout(r,180));
+  assert.equal(JSON.stringify({hp:w.vault.hp,zombies:w.zombies,tick:w.tick}),saved);
+  now=w.startedAt+CONFIG.duration+1;
+  await new Promise(r=>setTimeout(r,100));
+  assert.equal(w.phase,'expired');
+  assert.equal(w.vault.hp,JSON.parse(saved).hp);
+  assert.equal(p.alive,true);
+ }finally{await app.close();f.cleanup();}
 });
 
 

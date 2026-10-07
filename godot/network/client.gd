@@ -6,6 +6,7 @@ var delta_frames := 0
 signal snapshot_received(state: Dictionary)
 signal status_changed(message: String)
 signal directory_received(worlds: Array)
+signal world_created(world: String)
 signal action_feedback(message: String, success: bool)
 
 var host := "127.0.0.1"
@@ -14,6 +15,7 @@ var profile := "agent1"
 var cookie := ""
 var player_id := ""
 var world_id := ""
+var creating_world := false
 var seq := 0
 var connected := false
 var latest: Dictionary = {}
@@ -82,10 +84,16 @@ func refresh_worlds() -> void:
 		directory_received.emit(result.worlds)
 
 func create_world() -> void:
+	if creating_world: return
+	creating_world=true
 	var result: Dictionary = await request_json("/api/worlds", {}, true)
 	if result.has("error"):
 		status_changed.emit(str(result.error))
+		creating_world=false
+		return
 	await refresh_worlds()
+	world_created.emit(str(result.world.id))
+	creating_world=false
 
 func enter(selected_world: String, community: String, agent_name: String, retry := false) -> void:
 	if not retry:

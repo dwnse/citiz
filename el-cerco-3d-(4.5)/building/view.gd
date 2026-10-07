@@ -7,6 +7,17 @@ static func create(parent: Node3D, w: Dictionary, b: Dictionary) -> Node3D:
 	var d := Placement.definition(w,b.get("kind","wall"))
 	if b.get("kind","wall") == "wall":
 		var h := Placement.half(w,b)
+		if b.get("communityId", "forest")=="forest":
+			return Art.Forest.wall(parent,Vector3(h.x*2,d.height,h.y*2),Vector3(b.x,d.height/2,b.y))
+		if b.get("communityId", "forest")=="mountain":
+			var mountain_wall := Node3D.new()
+			parent.add_child(mountain_wall)
+			mountain_wall.position=Vector3(b.x,0,b.y)
+			var hit := Shapes.box(mountain_wall,Vector3(h.x*2,d.height,h.y*2),Vector3(0,d.height/2,0),Color.WHITE,true)
+			hit.hide()
+			Art.Mountain.wall(mountain_wall,h.x*2,h.y*2)
+			Art.merge_rigid(mountain_wall)
+			return mountain_wall
 		return Art.wall(parent,Vector3(h.x*2,d.height,h.y*2),Vector3(b.x,d.height/2,b.y))
 	var root := Node3D.new()
 	parent.add_child(root)
@@ -84,6 +95,11 @@ static func create(parent: Node3D, w: Dictionary, b: Dictionary) -> Node3D:
 			for side in [-1,1]:
 				Art.crate(root,Vector3(side*0.7,0,0))
 			Art.crate(root,Vector3(0,0.6,0))
+	if b.get("communityId", "forest")=="forest":
+		Art.Forest.dress_building(root,str(b.kind),float(d.width),float(d.depth))
+	elif b.get("communityId", "forest")=="mountain":
+		Art.Mountain.dress_building(root,str(b.kind),float(d.width),float(d.depth))
+		Art.batch_static(root,true)
 	var caption := Shapes.label(root,d.name,2.9,Color("d8dfc9"))
 	caption.font_size=30
 	return root

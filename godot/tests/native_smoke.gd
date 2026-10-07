@@ -80,6 +80,7 @@ func run() -> void:
 	ended_directory[0].phase="defeat"
 	game.hud.set_worlds(ended_directory)
 	check(game.hud.worlds.selected==-1 and game.hud.enter_button.disabled,"finished worlds cannot enter as invisible dead characters")
+	check(not game.hud.new_world_button.disabled and game.hud.new_world_button.get_index()<game.hud.worlds.get_index(),"new game stays available above finished world selector")
 	game.hud.set_worlds(directory.worlds)
 	check(game.hud.worlds.selected==0 and not game.hud.enter_button.disabled,"active world enables entry")
 	var world_aim := Vector3(46, 0, 67)
@@ -376,6 +377,14 @@ func run() -> void:
 	game.receive_state(ended_state)
 	check(game.hud.lobby.visible and not a.connected,"finished reconnect returns to lobby with explanation")
 	await create_timer(0.3).timeout
+	game.hud.new_world_button.pressed.emit()
+	check(await until(func(): return game.hud.directory.size()==2 and not a.creating_world),"new game button creates a fresh world through HTTP")
+	check(game.hud.worlds.selected>=0 and str(game.hud.worlds.get_selected_metadata())!=world and not game.hud.enter_button.disabled,"new world is selected automatically and allows entry")
+	for i in range(game.hud.communities.item_count):
+		if game.hud.communities.get_item_metadata(i)=="mountain": game.hud.communities.select(i)
+	game.hud.enter_button.pressed.emit()
+	check(await until(func(): return a.connected and a.world_id!=world and game.playable()),"player can enter newly created world after finished session")
+	check(a.latest.get("communityId","")=="mountain" and game.structures.has("vault-mountain"),"Cumbre community receives its mountain stronghold and playable spawn")
 	a.disconnect_world()
 	b.disconnect_world()
 	game.queue_free()
@@ -383,4 +392,3 @@ func run() -> void:
 	await process_frame
 	print("NATIVE_SMOKE failures=%d" % failures)
 	quit(1 if failures else 0)
-

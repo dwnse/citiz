@@ -31,6 +31,7 @@ var gameplay_overlay: Control
 var legacy_survival_panel: Control
 var legacy_hotbar: Control
 var worlds := OptionButton.new()
+var new_world_button: Button
 var communities := OptionButton.new()
 var community_cards := preload("res://ui/community_cards.gd").new()
 var agent_name := LineEdit.new()
@@ -297,6 +298,7 @@ func _ready() -> void:
 	subtitle.text = "Elige una partida y conserva tu perfil al reconectar."
 	subtitle.add_theme_font_size_override("font_size", 21)
 	menu.add_child(subtitle)
+	new_world_button=button(menu, "Nueva partida", func(): create_requested.emit())
 	menu.add_child(worlds)
 	worlds.custom_minimum_size.y = 44
 	menu.add_child(communities)
@@ -309,7 +311,6 @@ func _ready() -> void:
 	menu.add_child(agent_name)
 	enter_button=button(menu, "Entrar", enter_selection)
 	button(menu, "Actualizar partidas", func(): refresh_requested.emit())
-	button(menu, "Nueva partida", func(): create_requested.emit())
 	button(menu, "Volver al menú", selection.hide)
 	journal = PanelContainer.new()
 	journal.position = Vector2(230, 85)
@@ -481,6 +482,7 @@ func set_worlds(items: Array) -> void:
 	var previous: String = str(worlds.get_selected_metadata()) if worlds.selected>=0 else ""
 	directory = items
 	worlds.clear()
+	worlds.get_popup().max_size=Vector2i(900,320)
 	var preferred := -1
 	for w in items:
 		worlds.add_item("%s · %d/%d · %s" % [w.name, w.members, w.capacity, "Activa" if w.phase=="active" else "Terminada"])
@@ -491,6 +493,14 @@ func set_worlds(items: Array) -> void:
 	if preferred<0:
 		status.text="No hay partidas activas. Pulsa Nueva partida para empezar con un personaje vivo."
 	update_communities()
+
+func select_world(id: String) -> void:
+	for i in range(worlds.item_count):
+		if str(worlds.get_item_metadata(i))==id and not worlds.is_item_disabled(i):
+			worlds.select(i)
+			update_communities()
+			status.text="Partida nueva lista. Elige tu comunidad y pulsa Entrar."
+			return
 
 func inspect_structure(w: Dictionary,p: Dictionary,b: Dictionary) -> void:
 	inspector.visible=not b.is_empty() and p.get("alive",false) and w.get("phase","")=="active"

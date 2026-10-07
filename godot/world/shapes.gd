@@ -2,13 +2,13 @@ extends RefCounted
 ## Geometry is intentionally simple and replaceable with imported models.
 static func material(color: Color, glow := false) -> StandardMaterial3D:
 	var mat := StandardMaterial3D.new()
-	mat.albedo_color = color
+	mat.albedo_color = color.srgb_to_linear()
 	mat.roughness = 0.9
 	if color.a < 1.0:
 		mat.transparency = BaseMaterial3D.TRANSPARENCY_ALPHA
 	if glow:
 		mat.emission_enabled = true
-		mat.emission = color
+		mat.emission = color.srgb_to_linear()
 		mat.emission_energy_multiplier = 1.5
 	return mat
 

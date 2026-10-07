@@ -128,6 +128,7 @@ export function placementReason(w,p,x,y,kind='wall',rot=0,remote=false){
   if(v.hp<=0)return 'Tu bóveda fue destruida: ya no puedes construir en esta comunidad';
   if(distance>=radius)return `Fuera del límite azul: coloca el plano a menos de ${radius} m de tu bóveda (ahora ${Math.ceil(distance)} m). U junto a la bóveda amplía el territorio.`;
   if(distance<=4)return 'Deja libre el círculo rojo alrededor de la bóveda: coloca el plano más allá de 4 m';
+  if(v.radius&&Math.hypot(Math.max(0,Math.abs(x-v.x)-h.x),Math.max(0,Math.abs(y-v.y)-h.y))<v.radius)return 'Deja libre la huella del núcleo';
   if(remote?Math.hypot(p.x-v.x,p.y-v.y)>radius+6:Math.hypot(p.x-x,p.y-y)>=9)return 'Acércate a tu base';
   if(x-h.x<2||y-h.y<2||x+h.x>w.size-2||y+h.y>w.size-2)return 'Fuera del mapa';
   if(protectedRoad(w,x,y))return 'Corredor público reservado';

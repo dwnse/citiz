@@ -45,7 +45,7 @@ export function createServer({directory=root+'data',clock=()=>Date.now(),mode='d
         if(!msg||Array.isArray(msg)||typeof msg!=='object')return send(res,400,{error:'Se requiere un objeto JSON'});
         if(url.pathname==='/api/worlds'){
           if(mode!=='development')return send(res,403,{error:'Creación pública deshabilitada'});
-          if(worlds.length>=8)return send(res,409,{error:'Límite local de 8 mundos alcanzado'});
+          if(worlds.filter(w=>w.phase==='active').length>=8)return send(res,409,{error:'Límite local de 8 partidas activas alcanzado'});
           const fresh=createWorld(clock(),mode);fresh.name=String(msg.name||`Cerco ${worlds.length+1}`).trim().slice(0,40)||'Cerco';worlds.push(fresh);save();return send(res,201,{world:{id:fresh.id,name:fresh.name}});
         }
         if(url.pathname==='/api/join'){
@@ -102,7 +102,10 @@ export function createServer({directory=root+'data',clock=()=>Date.now(),mode='d
     accumulator-=steps/CONFIG.tick;
     for(const w of worlds){
       const present=online(w),encodingContext=createEncodingContext();
-      for(let step=0;step<steps;step++)tick(w,inputs,present,1/CONFIG.tick,clock());
+      // Empty sessions must not lose their core to unattended infected.
+      // The campaign's calendar expiry remains authoritative when nobody is online.
+      if(present.size||clock()>=w.startedAt+CONFIG.duration)
+        for(let step=0;step<steps;step++)tick(w,inputs,present,1/CONFIG.tick,clock());
       for(const id of present){
         const res=streams.get(id),due=nextSend.get(res)||start;
         if(start<due)continue;

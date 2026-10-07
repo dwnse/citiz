@@ -1,8 +1,10 @@
 import {addMaterials} from './inventory.mjs';
 import {contains} from './structures.mjs';
+import {initializeForestScenery} from './forest-scenery.mjs';
+import {initializeMountainScenery} from './mountain-scenery.mjs';
 
 export function initializeResources(w){
-  if(w.resourceLayout===2){nearbyResources(w);return;}
+  if(w.resourceLayout===2){nearbyResources(w);initializeForestScenery(w);initializeMountainScenery(w);return;}
   w.resources??=[];
   w.obstacles??=[];
   for(const c of (w.legacy?[]:w.communities))for(const [i,dx,dy] of [[0,-32,-26],[1,30,25]]){
@@ -25,6 +27,8 @@ export function initializeResources(w){
   }
   w.resourceLayout=2;
   nearbyResources(w);
+  initializeForestScenery(w);
+  initializeMountainScenery(w);
 }
 function nearbyResources(w){
   if(w.nearbyResourcesVersion===1)return;

@@ -50,7 +50,17 @@ test('dos clientes HTTP/SSE, autoridad, reconexión y reinicio persistente',asyn
  let base=await start();
  async function post(route,data,cookie){const r=await fetch(base+route,{method:'POST',headers:{'Content-Type':'application/json',...(cookie?{cookie}:{})},body:JSON.stringify(data)});return {status:r.status,data:await r.json(),cookie:r.headers.get('set-cookie')?.split(';')[0]};}
  async function connect(cookie){const c=new AbortController();controllers.push(c);const r=await fetch(base+'/api/events',{headers:{cookie},signal:c.signal});return {reader:r.body.getReader(),c};}
- async function state(reader){const r=await reader.read();return JSON.parse(new TextDecoder().decode(r.value).split('data: ')[1].split('\n\n')[0]);}
+ const eventBuffers=new WeakMap();
+ async function state(reader){
+  let pending=eventBuffers.get(reader)||{text:'',decoder:new TextDecoder()};
+  while(!pending.text.includes('\n\n')){
+   const r=await reader.read();if(r.done)throw Error('SSE ended before a complete event');
+   pending.text+=pending.decoder.decode(r.value,{stream:true});
+  }
+  const end=pending.text.indexOf('\n\n'),event=pending.text.slice(0,end);
+  pending.text=pending.text.slice(end+2);eventBuffers.set(reader,pending);
+  return JSON.parse(event.split('data: ')[1]);
+ }
  try{
  const a=await post('/api/join',{name:'Alpha'}),b=await post('/api/join',{name:'Bravo'});assert.notEqual(a.data.id,b.data.id);
  assert.equal((await post('/api/action',{type:'craft',seq:1},a.cookie)).status,401);

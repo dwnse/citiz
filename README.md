@@ -173,7 +173,7 @@ La suite usa almacenamiento temporal, dos clientes HTTP/SSE independientes y un 
 
 ## Mundos locales independientes y configuración
 
-La sala permite hasta ocho mundos independientes por proceso. Nuevos: cuatro comunidades y cupo total 40. Legado: una comunidad y cupo 10. Las claves del navegador se conservan por mundo. Los archivos antiguos migran a v6 dejando una copia exacta `world.json.vN.bak`, donde N es la versión de origen (1–5).
+La sala permite hasta ocho partidas activas por proceso. Las terminadas conservan sus guardados y perfiles, pero no ocupan ese límite: siempre puedes crear otra cuando haya una plaza activa disponible. Nuevos: cuatro comunidades y cupo total 40. Legado: una comunidad y cupo 10. Las claves del navegador se conservan por mundo. Los archivos antiguos migran a v6 dejando una copia exacta `world.json.vN.bak`, donde N es la versión de origen (1–5). Sin clientes conectados se detiene la simulación, incluidos los ataques de infectados; la caducidad de 30 días sigue vigente.
 
 Para un directorio independiente en otro proceso, desde otra terminal:
 

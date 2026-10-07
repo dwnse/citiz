@@ -194,10 +194,10 @@ export function tick(w,inputs,online,dt,now=Date.now()) {
     let target=players.filter(p=>dist(p,z)<=(z.finalBoss?80:p.noiseUntil>now?34:w.adventure?.night?22:18)).sort((a,b)=>dist(a,z)-dist(b,z))[0];const targetCore=core(w,z.communityId);if(!target)target=targetCore.hp>0?targetCore:null;if(!target)continue;
     if(z.boss&&!z.finalBoss)bossTick(w,z,players,dt,now,hurt);
     if(z.finalBoss){z.ability-=dt;if(z.ability<=2&&z.warning===0)z.warning=2;if(z.warning>0){z.warning-=dt;if(z.warning<=0){for(const p of players)if(dist(p,z)<(z.finalBoss?7:6))hurt(w,p,z.finalBoss?50:35,now);z.ability=z.finalBoss&&z.hp<900?6:10;z.warning=0;}}}
-    const isCore=vaults(w).includes(target),d=dist(z,target),route=direction(w,z,target,isCore?3:2.3),a=route.angle,speed=(z.finalBoss&&z.hp<900?2.4:z.boss?1.4:z.variant==='runner'?3.3:z.variant==='brute'?1.2:1.7+z.level*.25)*(z.rallyUntil>now?RALLY.speed:1);
+    const isCore=vaults(w).includes(target),d=dist(z,target),reach=isCore?(target.radius||2.2)+.8:2.3,route=direction(w,z,target,reach),a=route.angle,speed=(z.finalBoss&&z.hp<900?2.4:z.boss?1.4:z.variant==='runner'?3.3:z.variant==='brute'?1.2:1.7+z.level*.25)*(z.rallyUntil>now?RALLY.speed:1);
     const obstacle=w.walls.find(b=>isSolid(b)&&contains(b,z.x,z.y,1));
     if(obstacle&&d>2&&!route.routed){if(z.attack===0){obstacle.hp-=(z.boss?35:z.variant==='brute'?28:10+z.level*3)*(z.rallyUntil>now?RALLY.damage:1);z.attack=1;}continue;}
-    if(d>(isCore?3:2.3)){const old={x:z.x,y:z.y};move(w,z,Math.cos(a)*speed*dt,Math.sin(a)*speed*dt);if(dist(old,z)<.001)move(w,z,-Math.sin(a)*speed*dt,Math.cos(a)*speed*dt);}
+    if(d>reach){const old={x:z.x,y:z.y};move(w,z,Math.cos(a)*speed*dt,Math.sin(a)*speed*dt);if(dist(old,z)<.001)move(w,z,-Math.sin(a)*speed*dt,Math.cos(a)*speed*dt);}
     else if(z.attack===0){if(isCore)target.hp=Math.max(0,target.hp-(z.boss?45:12)*(z.rallyUntil>now?RALLY.damage:1));else hurt(w,target,(z.boss?22:z.variant==='brute'?18:9)*(z.rallyUntil>now?RALLY.damage:1),now);z.attack=1;}
   }
   w.zombies=w.zombies.filter(z=>z.hp>0);w.walls=w.walls.filter(b=>b.hp>0);w.drops=[...w.drops.filter(d=>d.sample),...w.drops.filter(d=>!d.sample).slice(-160)];

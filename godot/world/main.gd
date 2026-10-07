@@ -52,6 +52,7 @@ var controls_focused := true
 var controls_active := false
 var target_worker := ""
 var suppress_fire_until_release := false
+var rendering_preview := false
 
 func _notification(what: int) -> void:
 	if what == NOTIFICATION_APPLICATION_FOCUS_OUT:
@@ -143,6 +144,7 @@ func _ready() -> void:
 		if playable(): network.act("rebuild_vault")
 	)
 	network.directory_received.connect(hud.set_worlds)
+	network.world_created.connect(hud.select_world)
 	hud.refresh_requested.connect(network.refresh_worlds)
 	hud.create_requested.connect(network.create_world)
 	hud.enter_requested.connect(enter)
@@ -157,7 +159,7 @@ func _ready() -> void:
 	)
 	hud.settings.shadows_changed.connect(func(enabled): $Moon.shadow_enabled=enabled)
 	$Moon.shadow_enabled=hud.settings.shadows.button_pressed
-	network.refresh_worlds()
+	if not rendering_preview: network.refresh_worlds()
 
 func enter(world: String, community: String, agent_name: String) -> void:
 	target_worker=""
@@ -240,6 +242,7 @@ func receive_state(value: Dictionary) -> void:
 		grid_view.visible=building
 	$Moon.light_energy=0.48 if state.get("adventure",{}).get("night",false) else 1.05
 	$Moon.light_color=Color("8ea9d1") if state.get("adventure",{}).get("night",false) else Color("ffdea8")
+	configure_forest_lighting()
 	sync_actors()
 	sync_structures()
 	sync_props()
@@ -249,16 +252,58 @@ func receive_state(value: Dictionary) -> void:
 		if b.id==selected_structure: inspected=b
 	hud.inspect_structure(state,me,inspected)
 
+func configure_forest_lighting() -> void:
+	var in_forest: bool = float(me.get("x",160))<105
+	var in_mountain: bool = in_forest and float(me.get("y",50))>105
+	var night: bool = state.get("adventure",{}).get("night",false)
+	var environment: Environment = $Environment.environment
+	environment.ambient_light_source=Environment.AMBIENT_SOURCE_COLOR if in_forest and not night else Environment.AMBIENT_SOURCE_DISABLED
+	environment.ambient_light_energy=.53 if in_forest and not night else .55
+	environment.ambient_light_color=Color("d7e6df").srgb_to_linear() if in_forest and not night else Color(.55,.67,.72)
+	environment.background_color=Color("a2cbd7") if in_forest and not night else Color(.035,.065,.075)
+	environment.tonemap_mode=Environment.TONE_MAPPER_ACES if in_forest and not night else Environment.TONE_MAPPER_LINEAR
+	environment.tonemap_exposure=.90 if in_forest and not night else 1.0
+	environment.ssao_enabled=in_forest and not night
+	environment.ssao_radius=1.3
+	environment.ssao_intensity=1.15
+	environment.glow_enabled=in_forest and not night
+	environment.glow_intensity=.65
+	environment.glow_bloom=.12
+	if in_forest and not night:
+		$Moon.light_color=Color("fff0d4")
+		$Moon.light_energy=.92
+		$Moon.light_angular_distance=.8
+		$Moon.shadow_blur=2.0
+		if in_mountain:
+			environment.ambient_light_color=Color("c8def7").srgb_to_linear()
+			environment.background_color=Color("b9dbf4")
+			$Moon.light_color=Color("fff1dd")
+
 func make_terrain() -> void:
 	clear_children(terrain)
 	var size := float(state.size)
 	Art.landscape(terrain, state)
 	for obstacle in state.get("obstacles", []):
-		Art.obstacle(terrain, obstacle)
+		if obstacle.x<105 and obstacle.y>110:
+			Art.Mountain.obstacle(terrain,obstacle)
+		elif obstacle.has("landmark") and obstacle.x<105 and obstacle.y<105:
+			Art.Forest.landmark(terrain,obstacle)
+		elif str(obstacle.id).begins_with("forest-") and not obstacle.has("landmark"):
+			Art.Forest.obstacle(terrain, obstacle)
+		else:
+			Art.obstacle(terrain, obstacle)
 	for edge in [Vector3(0.8, 2, size/2), Vector3(size-0.8, 2, size/2)]:
-		Shapes.box(terrain, Vector3(2.4, 4, size), edge, Color("3e4b50"), true)
+		var boundary := Shapes.box(terrain, Vector3(2.4, 4, size), edge, Color("3e4b50"), true)
+		if edge.x<2:
+			boundary.visible=false
 	for edge in [Vector3(size/2, 2, 0.8), Vector3(size/2, 2, size-0.8)]:
-		Shapes.box(terrain, Vector3(size, 4, 2.4), edge, Color("3e4b50"), true)
+		var boundary := Shapes.box(terrain, Vector3(size, 4, 2.4), edge, Color("3e4b50"), true)
+		if edge.z<2:
+			boundary.visible=false
+			Shapes.box(terrain,Vector3(size-104,4,2.4),Vector3((size+104)/2,2,.8),Color("3e4b50"))
+		else:
+			boundary.visible=false
+			Shapes.box(terrain,Vector3(size-104,4,2.4),Vector3((size+104)/2,2,size-.8),Color("3e4b50"))
 	Art.batch_static(terrain)
 
 func sync_actors() -> void:
@@ -309,7 +354,11 @@ func sync_structures() -> void:
 			var base := Node3D.new()
 			base.position = Vector3(c.x, 0, c.y)
 			add_child(base)
-			Art.vault(base)
+			if c.id=="forest": Art.Forest.vault(base,float(c.vault.get("artScale",1.0)))
+			elif c.id=="mountain": Art.Mountain.vault(base,float(c.vault.get("artScale",1.0)))
+			else: Art.vault(base)
+			if c.id=="mountain": Art.batch_static(base.get_child(0),true)
+			if c.id in ["forest","mountain"]: Art.merge_rigid(base.get_child(0))
 			structures[key] = base
 		structures[key].scale.y = 1 if c.vault.hp > 0 else 0.2
 	for key in structures.keys():
@@ -335,8 +384,13 @@ func sync_props() -> void:
 			if resource.kind=="tree":
 				var rng := RandomNumberGenerator.new()
 				rng.seed=hash(resource.id)
-				Art.tree(shape,Vector3.ZERO,rng)
-			else: Art.stone(shape,Vector3(0,0.6,0),Vector3(1.6,1.2,1.6),Color("a2aaa9"))
+				if resource.x<105 and resource.y<105: Art.Forest.tree(shape,Vector3.ZERO,rng)
+				elif resource.x<105: Art.Mountain.pine(shape,Vector3.ZERO,rng)
+				else: Art.tree(shape,Vector3.ZERO,rng)
+			else:
+				if resource.x<105 and resource.y<105: Art.Forest.rock(shape,Vector3(0,0.6,0),Vector3(1.6,1.2,1.6))
+				elif resource.x<105: Art.Mountain.rock(shape,Vector3(1.6,1.2,1.6),Vector3(0,.6,0))
+				else: Art.stone(shape,Vector3(0,0.6,0),Vector3(1.6,1.2,1.6),Color("a2aaa9"))
 			Art.batch_static(shape)
 			var caption := Shapes.label(root,"",5 if resource.kind=="tree" else 2)
 			caption.name="ResourceLabel"
