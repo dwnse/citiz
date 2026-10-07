@@ -67,6 +67,8 @@ var pause_button: Button
 var stamina := ProgressBar.new()
 var last_incident := ""
 var cosmetic_buttons: Dictionary = {}
+var inventory_panel := preload("res://ui/inventory.gd").new()
+var backpack_button := Button.new()
 
 func card(color: Color, border: Color) -> StyleBoxFlat:
 	var style := StyleBoxFlat.new()
@@ -387,6 +389,29 @@ func _ready() -> void:
 	selection.reparent(modal_frame, false)
 	for popup in [settings, population_panel, journal]:
 		popup.reparent(modal_layer, false)
+	modal_layer.add_child(inventory_panel)
+	inventory_panel.visibility_changed.connect(sync_modal_layer)
+	root.add_child(backpack_button)
+	backpack_button.set_anchors_and_offsets_preset(Control.PRESET_BOTTOM_RIGHT)
+	backpack_button.offset_left = -88
+	backpack_button.offset_top = -265
+	backpack_button.offset_right = -24
+	backpack_button.offset_bottom = -201
+	backpack_button.icon = preload("res://assets/ui/inventory/backpack.svg")
+	backpack_button.expand_icon = true
+	backpack_button.add_theme_constant_override("icon_max_width", 40)
+	backpack_button.add_theme_stylebox_override("normal", inventory_panel.skin("24251f", "c47c40"))
+	backpack_button.tooltip_text = "Mochila [I] · Equipo, suministros y materiales"
+	var backpack_key := Label.new()
+	backpack_key.text = "I"
+	backpack_key.position = Vector2(48, 40)
+	backpack_key.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	backpack_key.add_theme_color_override("font_color", Color("efb66c"))
+	backpack_button.add_child(backpack_key)
+	backpack_button.pressed.connect(toggle_inventory)
+	gameplay_chrome.append(backpack_button)
+	backpack_button.visible = not lobby.visible
+	root.move_child(modal_layer, root.get_child_count() - 1)
 	for popup in [selection, settings, population_panel, journal]:
 		popup.visibility_changed.connect(sync_modal_layer)
 	root.resized.connect(fit_modal_frame)
@@ -403,7 +428,7 @@ func fit_modal_frame() -> void:
 	modal_frame.position = (start_menu.size - modal_frame.size * factor) * 0.5
 
 func sync_modal_layer() -> void:
-	var open: bool = start_menu.selection.visible or settings.visible or population_panel.visible or journal.visible
+	var open: bool = start_menu.selection.visible or settings.visible or population_panel.visible or journal.visible or inventory_panel.visible
 	modal_layer.visible = open
 	start_menu.set_modal_open(open)
 	if open == modal_open:
@@ -417,7 +442,7 @@ func sync_modal_layer() -> void:
 					background_focus[control] = control.focus_mode
 					control.release_focus()
 					control.focus_mode = Control.FOCUS_NONE
-		var active: Control = start_menu.selection if start_menu.selection.visible else (settings if settings.visible else (population_panel if population_panel.visible else journal))
+		var active: Control = inventory_panel if inventory_panel.visible else (start_menu.selection if start_menu.selection.visible else (settings if settings.visible else (population_panel if population_panel.visible else journal)))
 		for control in active.find_children("*", "Control", true, false):
 			if control.is_visible_in_tree() and control.focus_mode != Control.FOCUS_NONE and not (control is BaseButton and control.disabled):
 				control.grab_focus()
@@ -439,12 +464,14 @@ func update_menu_presentation() -> void:
 	sync_modal_layer()
 
 func open_menu_selection() -> void:
+	inventory_panel.hide()
 	settings.hide()
 	journal.hide()
 	population_panel.hide()
 	start_menu.show_selection()
 
 func toggle_menu_settings() -> void:
+	inventory_panel.hide()
 	journal.hide()
 	population_panel.hide()
 	start_menu.selection.hide()
@@ -531,19 +558,34 @@ func enter_selection() -> void:
 		enter_requested.emit(worlds.get_selected_metadata(), communities.get_selected_metadata(), agent_name.text)
 
 func toggle_population() -> void:
+	inventory_panel.hide()
 	if not lobby.visible:
 		journal.hide()
 		settings.hide()
 		population_panel.visible=not population_panel.visible
 
 func toggle_journal() -> void:
+	inventory_panel.hide()
 	if not lobby.visible:
 		population_panel.hide()
 		settings.hide()
 		journal.visible = not journal.visible
 
+func toggle_inventory() -> void:
+	if lobby.visible or inventory_panel.player.is_empty() or not inventory_panel.player.get("alive", false): return
+	if inventory_panel.visible:
+		inventory_panel.hide()
+		return
+	settings.hide()
+	journal.hide()
+	population_panel.hide()
+	start_menu.selection.hide()
+	inventory_panel.show()
+	inventory_panel.use_button.grab_focus()
+
 func show_state(w: Dictionary, p: Dictionary, building: bool) -> void:
 	lobby.hide()
+	inventory_panel.update_state(w, p)
 	population_panel.update_state(w,p)
 	building_mode=building
 	help_label.visible=not building

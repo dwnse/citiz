@@ -121,6 +121,18 @@ func _ready() -> void:
 			network.act(action, payload)
 	)
 	hud.pause_requested.connect(func(): network.act("pause"))
+	hud.inventory_panel.action_requested.connect(func(action: String, payload: Dictionary):
+		if network.connected and hud.inventory_panel.visible and me.get("alive", false) and state.get("phase", "") == "active" and not state.get("adventure", {}).get("paused", false) and action in ["consume", "equip", "weapon", "reload", "craft"]:
+			suppress_fire_until_release = true
+			network.act(action, payload)
+	)
+	hud.inventory_panel.visibility_changed.connect(func():
+		suppress_fire_until_release = true
+		if hud.inventory_panel.visible:
+			set_build_mode(false)
+			row_dragging = false
+			target_worker = ""
+	)
 	hud.weapon_requested.connect(func(kind):
 		if network.connected and me.get("alive",false) and not state.get("adventure",{}).get("paused",false): network.act("weapon",{"weapon":kind})
 	)
@@ -161,6 +173,7 @@ func leave() -> void:
 	clear_children(dying_actors)
 	target_worker=""
 	network.disconnect_world()
+	hud.inventory_panel.hide()
 	me = {}
 	set_build_mode(false)
 	hud.journal.hide()
@@ -462,6 +475,7 @@ func _process(delta: float) -> void:
 		row_dragging=false
 		shot_timer=maxf(shot_timer,0.15)
 	if not network.connected or me.is_empty():
+		hud.inventory_panel.hide()
 		return
 	var aim: Vector3 = camera.ground_point()
 	var angle := atan2(aim.z-float(me.y), aim.x-float(me.x))
@@ -537,6 +551,19 @@ func _process(delta: float) -> void:
 
 func _unhandled_input(event: InputEvent) -> void:
 	if event is InputEventKey and event.pressed and not event.echo:
+		if event.physical_keycode == KEY_I:
+			hud.toggle_inventory()
+			get_viewport().set_input_as_handled()
+			return
+		if event.physical_keycode == KEY_ESCAPE and hud.inventory_panel.visible:
+			hud.inventory_panel.hide()
+			get_viewport().set_input_as_handled()
+			return
+		if hud.inventory_panel.visible and event.physical_keycode >= KEY_1 and event.physical_keycode <= KEY_5:
+			var quick: Button = hud.inventory_panel.quick_cells[event.physical_keycode - KEY_1]
+			if not quick.disabled: quick.pressed.emit()
+			get_viewport().set_input_as_handled()
+			return
 		if event.physical_keycode == KEY_P and network.connected:
 			network.act("pause")
 			return

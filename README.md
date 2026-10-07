@@ -1,5 +1,9 @@
 # El Cerco
 
+## Inventario Supervivencia
+
+**I / icono de mochila** abre el inventario con Sam en 3D, equipo, suministros, materiales y accesos rápidos. Consumir, equipar, recargar y fabricar munición usan las reglas y existencias reales del servidor. Orden de casillas guardado por personaje. [Controles, captura y validación](docs/INVENTARIO_SUPERVIVENCIA.md).
+
 ## Arte 021 — Fase 1: personajes con esqueleto
 
 Agente y zombi común sustituidos por modelos GLB animados de Quaternius (CC0).
